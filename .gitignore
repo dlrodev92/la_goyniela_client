@@ -1,0 +1,30 @@
+# dependencies
+/node_modules
+/.pnp
+.pnp.*
+
+# testing
+/coverage
+
+# next.js
+/.next/
+/out/
+
+# production
+/build
+
+# local files
+.DS_Store
+*.pem
+.env*
+.vercel
+*.tsbuildinfo
+next-env.d.ts
+*.log
+
+# share the server configuration template only
+!.env.example
+.atl/
+
+# Licensed web fonts (ITF FFL forbids redistribution; fetched locally, see docs/design/ui-redesign-todo.md)
+/src/app/fonts/*.woff2

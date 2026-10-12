@@ -1,0 +1,41 @@
+{
+  "name": "la-goyniela-client",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "fonts:fetch": "node scripts/fetch-fonts.mjs",
+    "predev": "pnpm fonts:fetch",
+    "dev": "next dev",
+    "prebuild": "pnpm fonts:fetch",
+    "build": "next build",
+    "start": "next start",
+    "lint": "eslint",
+    "test:auth": "tsc -p tsconfig.tests.json && node --conditions=react-server --test tests/auth.test.mjs tests/oauth.test.mjs",
+    "test:matchdays": "tsc -p tsconfig.tests.json && node --conditions=react-server --test tests/matchdays.test.mjs",
+    "test:groups": "tsc -p tsconfig.tests.json && node --conditions=react-server --test tests/groups.test.mjs tests/group-admin.test.mjs",
+    "test:mvp": "tsc -p tsconfig.tests.json && node --conditions=react-server --test tests/results.test.mjs tests/register.test.mjs tests/profile.test.mjs",
+    "test": "tsc -p tsconfig.tests.json && node --conditions=react-server --test tests/auth.test.mjs tests/oauth.test.mjs tests/groups.test.mjs tests/group-admin.test.mjs tests/matchdays.test.mjs tests/results.test.mjs tests/register.test.mjs tests/profile.test.mjs tests/ui-logic.test.mjs tests/live-refresh.test.mjs tests/jornadas.test.mjs tests/porras.test.mjs tests/boleto-modes.test.mjs tests/contract-lot.test.mjs tests/superadmin.test.mjs"
+  },
+  "dependencies": {
+    "@gsap/react": "^2.1.2",
+    "@phosphor-icons/react": "^2.1.10",
+    "@tanstack/react-query": "^5.104.1",
+    "gsap": "^3.15.0",
+    "next": "16.3.8",
+    "react": "19.2.8",
+    "react-dom": "19.2.8",
+    "server-only": "^0.0.1",
+    "zod": "^4.6.5"
+  },
+  "devDependencies": {
+    "@tailwindcss/postcss": "^4",
+    "@types/node": "^20",
+    "@types/react": "^19",
+    "@types/react-dom": "^19",
+    "eslint": "^9",
+    "eslint-config-next": "16.3.8",
+    "tailwindcss": "^4",
+    "typescript": "^5"
+  },
+  "packageManager": "pnpm@11.20.0"
+}

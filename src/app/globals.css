@@ -1,0 +1,1383 @@
+@import "tailwindcss";
+
+/*
+ * Design tokens. `static` keeps every variable on :root even when no utility uses it,
+ * so base rules, inline styles and scene gradients can read them through var(--color-*).
+ */
+@theme static {
+  /*
+   * SWISS BRUTALISM x PIXEL ART (default scope).
+   * Surfaces are paper (cream family), ink is near-black, green is an accent, signal red is used sparingly.
+   * The page ground (--color-canvas) stays the pixel-art dark green: it only shows behind the scene art and
+   * is never a surface for text. Text lives on cream panels (fg = ink).
+   * The previous dark-green look is preserved verbatim by the legacy scope (see [data-theme="legacy"] below).
+   */
+  --color-canvas: #002600;
+  --color-bone: #fbf6e9; /* lightest paper: panels, cards */
+  --color-cream: #f6ebd7; /* the boleto paper */
+  --color-paper: #e8dabb; /* darker paper: wells, hovers */
+  --color-paper-deep: #d3c299; /* darkest paper: unfilled tracks, dividers */
+  --color-ink: #0b0f0c;
+  --color-brand: #00682d; /* brand green (accent) */
+  --color-signal: #ff5a36; /* hot accent, fills only (ink text on it = 6:1) */
+
+  --color-surface-1: var(--color-bone);
+  --color-surface-2: var(--color-cream);
+  --color-surface-3: var(--color-paper);
+  --color-surface-4: var(--color-paper-deep);
+  --color-surface-5: #bfae83;
+  --color-action: var(--color-brand); /* 5.6:1 on cream */
+  --color-highlight: var(--color-ink);
+  --color-secondary: #1d6b36;
+  --color-muted: #4a4636;
+
+  /* Semantic roles */
+  --color-bg: var(--color-canvas);
+  --color-fg: var(--color-ink);
+  --color-fg-muted: #4a4636; /* 7:1 on paper, 8:1 on cream */
+  --color-on-action: var(--color-bone);
+  --color-border-soft: var(--color-ink);
+  --color-edge: var(--color-ink); /* outline of buttons and badges (legacy: none) */
+  --color-danger: #b3261e;
+  --color-on-danger: var(--color-bone);
+  --color-warning: #8a5a00;
+  --color-on-warning: var(--color-bone);
+  --color-success: #17692f;
+  --color-on-success: var(--color-bone);
+
+  /* Type scale: size + line height */
+  --text-display: 2.5rem;
+  --text-display--line-height: 2.75rem;
+  --text-h1: 1.75rem;
+  --text-h1--line-height: 2rem;
+  --text-h2: 1.375rem;
+  --text-h2--line-height: 1.75rem;
+  --text-body: 1rem;
+  --text-body--line-height: 1.5rem;
+  --text-label: 0.875rem;
+  --text-label--line-height: 1.25rem;
+  --text-meta: 0.75rem;
+  --text-meta--line-height: 1rem;
+
+  /* Spacing: base unit 4px. p-1/2/3/4/6/8/12 = 4/8/12/16/24/32/48, nothing else by convention. */
+  --spacing: 0.25rem;
+  --spacing-touch: 2.75rem; /* 44px minimum touch target: min-h-touch, min-w-touch */
+
+  /* Shapes: zero radius, thick ink borders, hard offset shadows (legacy scope restores round + soft). */
+  --radius-card: 0;
+  --radius-control: 0;
+  --radius-pill: 0; /* rounded-pill: buttons, chips, nav items */
+  --bw: 2px; /* border-(length:--bw): the default outline weight */
+  --bw-thick: 3px; /* rules and panel frames */
+  --shadow-hard: 4px 4px 0 var(--color-ink);
+  --shadow-hard-sm: 2px 2px 0 var(--color-ink);
+
+  /*
+   * Motion tokens. Mirrored in src/lib/motion.ts for GSAP/JS: keep both in sync.
+   * Playfulness budget: only --ease-spring (touch targets, pixel-art moments) overshoots; everything else is precise.
+   */
+  --duration-fast: 150ms;
+  --duration-base: 240ms;
+  --duration-slow: 400ms;
+  --duration-hero: 700ms;
+  --duration-loop: 1600ms;
+  --duration-fade: 150ms; /* opacity-only fades; stays short under reduced motion */
+  --duration-curtain: 580ms; /* brand curtain page transition: cover (first half) + reveal (second half) */
+  --duration-curtain-back: 760ms; /* back curtain sweeps sideways and a little slower */
+  --curtain-lag: 60ms; /* the deeper trailing band follows the lead band by this much */
+  --stagger-step: 45ms;
+  --ease-enter: cubic-bezier(0.16, 1, 0.3, 1); /* decelerate: things arriving */
+  --ease-standard: cubic-bezier(0.2, 0, 0, 1); /* state changes in place */
+  --ease-exit: cubic-bezier(0.4, 0, 1, 1); /* accelerate: things leaving */
+  /* Damped spring (zeta 0.65), ~7% overshoot, settles in ~0.5s. */
+  --ease-spring: linear(0, 0.083, 0.267, 0.48, 0.677, 0.836, 0.949, 1.02, 1.056, 1.068, 1.064, 1.053, 1.038, 1.024, 1.013, 1.005, 0.999, 0.997, 0.995, 0.996, 1);
+  /* Distances and scales: zeroed under reduced motion so transforms vanish while fades remain. */
+  --motion-distance: 0.75rem;
+  --motion-pop-scale: 0.4;
+  --press-scale: 1;
+  /* Overlays (dialogs, sheets, drawers): travel as a share of their own size, and the pop-in start scale. */
+  --overlay-offset: 100%;
+  --overlay-scale: 0.96;
+  /* Hover: cards lift this much and the hard shadow grows. Zeroed under reduced motion (lift only). */
+  --hover-lift: -2px;
+  --elev-hover: 6px 6px 0 var(--color-ink);
+  --elev-sheet: 0 -4px 0 var(--color-ink);
+  /* Pressing a control: it travels onto its shadow (legacy: scales down instead). */
+  --press-shift: 3px 3px;
+  /* Persistent shell (header, bottom nav, ticker): solid paper, no blur. */
+  --shell-bg: var(--color-bone);
+  --shell-blur: none;
+  --shell-edge: var(--bw-thick);
+  --shell-edge-color: var(--color-ink);
+  /* Concentric badge / avatar ring. */
+  --badge-ring-shadow: 0 0 0 var(--bw) var(--color-ink);
+  --radius-avatar: 0;
+  --color-skeleton: var(--color-paper);
+  --nav-progress-bg: var(--color-signal);
+  --nav-progress-h: 4px;
+  --card-hover-edge: var(--color-ink);
+  /* Focus ring: a thick ink outline on every control (paper surfaces already are light, so ink works everywhere). */
+  --focus-ring-color: var(--color-ink);
+  --focus-ring-width: 3px;
+  --focus-ring-offset: 2px;
+  /* Brand curtain bands: lead (brand green) and a deeper ink band trailing behind it, both edged with cream. */
+  --color-curtain: var(--color-brand);
+  --color-curtain-deep: var(--color-ink);
+  --color-curtain-edge: var(--color-cream);
+  /* Skeletons stay invisible this long, so fast loads never flash a placeholder. */
+  --skeleton-delay: 250ms;
+
+  /* Tailwind's transition-* utilities read these defaults. */
+  --default-transition-duration: var(--duration-fast);
+  --default-transition-timing-function: var(--ease-standard);
+
+}
+
+/* Hover only where a precise pointer exists: touch devices never get sticky hovers. Use as `hover-fine:*`. */
+@custom-variant hover-fine {
+  @media (hover: hover) and (pointer: fine) {
+    &:hover {
+      @slot;
+    }
+  }
+}
+
+/* Font variables are injected by next/font on <html>; resolve them at usage time. */
+@theme inline {
+  --font-display: var(--font-tanker), Impact, "Arial Narrow", Arial, sans-serif;
+  --font-ui: var(--font-nippo), Arial, Helvetica, sans-serif;
+}
+
+/*
+ * Graphic language: decorative, CSS-only. Apply to empty elements (or pseudo layers)
+ * that carry aria-hidden="true". Color follows currentColor, so pair with text-* utilities.
+ */
+@utility pixel-halftone {
+  /* Dot grid that fades out to the right; place over scene art edges. */
+  pointer-events: none;
+  background-image: radial-gradient(circle, currentColor 1.25px, transparent 1.75px);
+  background-size: 8px 8px;
+  mask-image: linear-gradient(to right, black, transparent);
+}
+
+@utility badge-ring {
+  /* Ring around a badge or avatar: a hard ink frame (legacy scope: the concentric round ring). */
+  border-radius: var(--radius-avatar);
+  box-shadow: var(--badge-ring-shadow);
+}
+
+@utility pitch-lines {
+  /* Half-way line plus centre circle, centred in the box. */
+  pointer-events: none;
+  background-image:
+    linear-gradient(currentColor, currentColor),
+    radial-gradient(circle, transparent 3.25rem, currentColor 3.25rem, currentColor calc(3.25rem + 2px), transparent calc(3.25rem + 2px));
+  background-size: 2px 100%, 100% 100%;
+  background-position: center, center;
+  background-repeat: no-repeat;
+}
+
+@utility brut-panel {
+  /* Swiss panel: opaque cream paper, thick ink frame, hard offset shadow. The page sheet and big hero blocks. */
+  background: var(--color-surface-2);
+  color: var(--color-fg);
+  border: var(--bw-thick) solid var(--color-ink);
+  border-radius: var(--radius-card);
+  box-shadow: 6px 6px 0 var(--color-ink);
+}
+
+/* Nested-card rule (see page-container.tsx): inside a sheet, static cards become ruled sections. */
+[data-sheet] [data-card]:not([data-interactive]) {
+  background: transparent;
+  border-width: 0;
+  border-top: var(--bw) solid var(--color-ink);
+  box-shadow: none;
+  padding-inline: 0;
+  padding-bottom: 0;
+}
+
+/* A rule already closes the header or section plate above: the flattened card must not stack a second one. */
+[data-sheet] :is([data-sheet-header], [data-section-bar]) + [data-card]:not([data-interactive]) {
+  border-top-width: 0;
+  padding-top: 0;
+}
+
+/* Section plates inside a sheet drop their box and keep a heavy bottom rule. */
+[data-sheet] [data-section-bar] {
+  background: transparent;
+  border-width: 0 0 var(--bw-thick) 0;
+  box-shadow: none;
+  padding-inline: 0;
+}
+
+@utility label-meta {
+  /* Small uppercase tracked meta text: section labels, index numbers, units. */
+  font-size: var(--text-meta);
+  line-height: var(--text-meta--line-height);
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.14em;
+}
+
+@utility pixel-border {
+  /* 2px border whose corners are notched in 4px steps. */
+  border: 2px solid currentColor;
+  clip-path: polygon(
+    0 4px, 4px 4px, 4px 0,
+    calc(100% - 4px) 0, calc(100% - 4px) 4px, 100% 4px,
+    100% calc(100% - 4px), calc(100% - 4px) calc(100% - 4px), calc(100% - 4px) 100%,
+    4px 100%, 4px calc(100% - 4px), 0 calc(100% - 4px)
+  );
+}
+
+@utility ticket-top {
+  /* Membership ticket, upper half: round notches cut out of the two bottom corners. */
+  -webkit-mask: radial-gradient(circle 0.75rem at 0 100%, transparent 97%, #000) left / 51% 100% no-repeat,
+    radial-gradient(circle 0.75rem at 100% 100%, transparent 97%, #000) right / 51% 100% no-repeat;
+  mask: radial-gradient(circle 0.75rem at 0 100%, transparent 97%, #000) left / 51% 100% no-repeat,
+    radial-gradient(circle 0.75rem at 100% 100%, transparent 97%, #000) right / 51% 100% no-repeat;
+}
+
+@utility ticket-bottom {
+  /* Membership ticket, lower half: matching notches in the two top corners. */
+  -webkit-mask: radial-gradient(circle 0.75rem at 0 0, transparent 97%, #000) left / 51% 100% no-repeat,
+    radial-gradient(circle 0.75rem at 100% 0, transparent 97%, #000) right / 51% 100% no-repeat;
+  mask: radial-gradient(circle 0.75rem at 0 0, transparent 97%, #000) left / 51% 100% no-repeat,
+    radial-gradient(circle 0.75rem at 100% 0, transparent 97%, #000) right / 51% 100% no-repeat;
+}
+
+@utility ticket-barcode {
+  /* Decorative barcode stripes. */
+  background-image: repeating-linear-gradient(to right, currentColor 0 2px, transparent 2px 4px, currentColor 4px 5px, transparent 5px 9px);
+}
+
+@utility pixel-corner {
+  /* Stepped corner accent in the top-right; the host needs room (no overflow clipping). */
+  position: relative;
+  &::after {
+    content: "";
+    position: absolute;
+    top: 0;
+    right: 0;
+    width: 4px;
+    height: 4px;
+    pointer-events: none;
+    background: currentColor;
+    box-shadow:
+      -4px 0 0 currentColor,
+      -8px 0 0 currentColor,
+      0 4px 0 currentColor,
+      0 8px 0 currentColor,
+      -4px 4px 0 currentColor;
+  }
+}
+
+/*
+ * Legacy scope: the previous dark-green look, verbatim. The superadmin layout renders <div data-theme="legacy">, which
+ * re-declares every token the old look used. The root also adopts the scope while such a wrapper is mounted (`:has`), so
+ * the html/body ground, scrollbars, header and bottom nav of that area match too. Semantic tokens are re-declared (not
+ * just the palette) because `--color-fg: var(--color-ink)` resolves where it is declared and would not follow.
+ */
+:root:has([data-theme="legacy"]),
+[data-theme="legacy"] {
+  color-scheme: dark;
+  --color-canvas: #002600;
+  --color-surface-1: #00330a;
+  --color-surface-2: #004016;
+  --color-surface-3: #005021;
+  --color-surface-4: #00682d;
+  --color-surface-5: #00883a;
+  --color-action: #b2ffa6;
+  --color-highlight: #c4fcbb;
+  --color-secondary: #9adf90;
+  --color-muted: #a2da9a;
+  --color-cream: #f6ebd7;
+  --color-ink: #081a0e;
+  --color-bg: #002600;
+  --color-fg: #c4fcbb;
+  --color-fg-muted: #a2da9a;
+  --color-on-action: #081a0e;
+  --color-border-soft: #3a7a3e;
+  --color-edge: transparent;
+  --color-danger: #ffb4a6;
+  --color-on-danger: #081a0e;
+  --color-warning: #ffd27a;
+  --color-on-warning: #081a0e;
+  --color-success: #7be38f;
+  --color-on-success: #081a0e;
+  --radius-card: 1.25rem;
+  --radius-control: 0.75rem;
+  --radius-pill: 9999px;
+  --bw: 1px;
+  --bw-thick: 1px;
+  --shadow-hard: 0 0 0 0 transparent;
+  --shadow-hard-sm: 0 0 0 0 transparent;
+  --elev-hover: 0 0.375rem 1rem rgb(0 0 0 / 0.32);
+  --elev-sheet: 0 -0.75rem 2rem rgb(0 0 0 / 0.35);
+  --press-shift: 0 0;
+  --press-scale: 0.96;
+  --shell-bg: rgb(0 38 0 / 0.85);
+  --shell-blur: blur(4px);
+  --shell-edge: 1px;
+  --shell-edge-color: rgb(58 122 62 / 0.6);
+  --badge-ring-shadow: 0 0 0 2px #002600, 0 0 0 4px currentColor, 0 0 0 6px #002600;
+  --radius-avatar: 9999px;
+  --color-skeleton: #004016;
+  --nav-progress-bg: linear-gradient(90deg, #9adf90, #b2ffa6);
+  --nav-progress-h: 2px;
+  --card-hover-edge: color-mix(in oklab, #b2ffa6 55%, #3a7a3e);
+  --focus-ring-color: #b2ffa6;
+  --focus-ring-width: 2px;
+  --focus-ring-offset: 3px;
+  --color-curtain: #00883a;
+  --color-curtain-deep: #005021;
+  --color-curtain-edge: #b2ffa6;
+}
+
+/* Element defaults: utilities (text-*, font-*) win over these because they live in a lower layer. */
+@layer base {
+  :root {
+    color-scheme: light;
+  }
+
+  html {
+    min-width: 20rem;
+    interpolate-size: allow-keywords; /* lets height/block-size animate to and from auto (details, Reveal) */
+    background: var(--color-bg);
+    /* Focus and anchor scrolling must clear the sticky header and the sticky action bar above the bottom nav. */
+    scroll-padding-top: 7.5rem; /* sticky header (4rem) + jornada ticker (2.75rem) */
+    scroll-padding-bottom: 13rem;
+  }
+
+  body {
+    min-height: 100dvh;
+    margin: 0;
+    color: var(--color-fg);
+    background: var(--color-bg);
+    line-height: 1.5;
+  }
+
+  button:not(:disabled) {
+    cursor: pointer;
+  }
+
+  fieldset {
+    min-width: 0;
+    margin: 0;
+    padding: 0;
+    border: 0;
+  }
+
+  a {
+    color: var(--color-action);
+    text-underline-offset: 0.2em;
+  }
+
+  /* One focus ring for everything focusable. Zero specificity: a component can retune it with --focus-ring-* tokens. */
+  :where(a, button, input, select, textarea, summary, [tabindex]):focus-visible {
+    outline: var(--focus-ring-width) solid var(--focus-ring-color);
+    outline-offset: var(--focus-ring-offset);
+  }
+
+  dialog:focus-visible {
+    outline: none;
+  }
+
+  /* Links that carry a pending indicator (AppLink) are its positioning context. */
+  :where(a:has(> .link-pending)) {
+    position: relative;
+  }
+
+  h1,
+  h2,
+  p {
+    margin-block: 0;
+  }
+
+  h1 {
+    font-size: clamp(2rem, 10vw, 3.5rem);
+    line-height: 1.05;
+  }
+
+  h2 {
+    font-size: 1.25rem;
+  }
+
+  h1,
+  h2 {
+    font-family: var(--font-display);
+    letter-spacing: -0.02em;
+    overflow-wrap: anywhere;
+  }
+}
+
+/*
+ * Reduced motion, one global policy: every transform distance and scale collapses and durations shrink to a short
+ * fade, so state changes stay visible as opacity/color without anything moving. JS reads the same query (src/lib/motion.ts).
+ */
+@media (prefers-reduced-motion: reduce) {
+  :root {
+    --duration-fast: 100ms;
+    --duration-base: 100ms;
+    --duration-slow: 100ms;
+    --duration-hero: 100ms;
+    --duration-fade: 100ms;
+    --duration-curtain: 100ms;
+    --stagger-step: 0ms;
+    --ease-spring: linear;
+    --motion-distance: 0px;
+    --motion-pop-scale: 1;
+    --press-scale: 1;
+    --press-shift: 0 0;
+    --overlay-offset: 0%;
+    --overlay-scale: 1;
+    --hover-lift: 0px;
+  }
+
+  /* The legacy scope is unlayered and more specific than :root, so it needs its own copy of the motion collapse. */
+  :root:has([data-theme="legacy"]),
+  [data-theme="legacy"] {
+    --press-scale: 1;
+    --press-shift: 0 0;
+  }
+
+  *,
+  *::before,
+  *::after {
+    scroll-behavior: auto !important;
+  }
+}
+
+/* Motion utilities */
+@keyframes rise-in {
+  from { opacity: 0; translate: 0 var(--motion-distance); }
+}
+
+@keyframes pixel-in {
+  from { clip-path: inset(100% 0 0 0); }
+  to { clip-path: inset(0 0 0 0); }
+}
+
+.text-reveal-word {
+  /* TextReveal: starts muted and dim, ends in the heading color. --i is the word index. */
+  color: var(--color-fg-muted);
+  opacity: 0.35;
+  transition:
+    color var(--duration-slow) var(--ease-standard),
+    opacity var(--duration-slow) var(--ease-standard);
+  transition-delay: calc(var(--i, 0) * var(--stagger-step));
+}
+
+[data-revealed="true"] > * > .text-reveal-word {
+  color: inherit;
+  opacity: 1;
+}
+
+.ring-dot {
+  /* ProgressRing: unfilled dots rest; filled ones pop in with a spring, staggered around the ring. */
+  fill: var(--color-surface-4);
+  transform-box: fill-box;
+  transform-origin: center;
+  transition:
+    fill var(--duration-base) var(--ease-standard),
+    scale var(--duration-slow) var(--ease-spring);
+  transition-delay: calc(var(--i, 0) * var(--stagger-step) * 0.5);
+}
+
+.ring-dot[data-filled="false"] {
+  scale: var(--motion-pop-scale);
+}
+
+.ring-dot[data-filled="true"] {
+  fill: var(--color-action);
+  scale: 1;
+}
+
+.nav-pill {
+  /* Bottom-nav indicator: slides between tabs with a small spring overshoot. */
+  transition:
+    transform var(--duration-base) var(--ease-spring),
+    opacity var(--duration-fast) var(--ease-standard);
+}
+
+.nav-pill[data-visible="false"] {
+  opacity: 0;
+}
+
+.sign-pill {
+  /* SignToggle indicator: slides to the chosen sign with a small spring overshoot. */
+  transition:
+    transform var(--duration-base) var(--ease-spring),
+    opacity var(--duration-fast) var(--ease-standard);
+}
+
+.sign-pill[data-visible="false"] {
+  opacity: 0;
+}
+
+@utility tap {
+  /* Touch target: colors and shadow settle fast, scale returns with a small spring overshoot. Press down is immediate and
+     always wins over hover (lift, shadow) because `:active` comes last. */
+  transition:
+    background-color var(--duration-fast) var(--ease-standard),
+    border-color var(--duration-fast) var(--ease-standard),
+    color var(--duration-fast) var(--ease-standard),
+    filter var(--duration-fast) var(--ease-standard),
+    opacity var(--duration-fast) var(--ease-standard),
+    box-shadow var(--duration-base) var(--ease-standard),
+    translate var(--duration-fast) var(--ease-standard),
+    scale var(--duration-base) var(--ease-spring);
+  &:active:not(:disabled, [aria-disabled="true"]) {
+    scale: var(--press-scale);
+    translate: var(--press-shift);
+    box-shadow: none;
+    transition:
+      background-color var(--duration-fast) var(--ease-standard),
+      border-color var(--duration-fast) var(--ease-standard),
+      color var(--duration-fast) var(--ease-standard),
+      filter var(--duration-fast) var(--ease-standard),
+      opacity var(--duration-fast) var(--ease-standard),
+      box-shadow var(--duration-fast) var(--ease-standard),
+      scale 80ms var(--ease-standard);
+  }
+}
+
+@utility tap-peer {
+  /* Same as tap for a decorative span that follows a native `peer` input: the input receives the press. */
+  transition:
+    background-color var(--duration-fast) var(--ease-standard),
+    border-color var(--duration-fast) var(--ease-standard),
+    color var(--duration-fast) var(--ease-standard),
+    box-shadow var(--duration-base) var(--ease-standard),
+    scale var(--duration-base) var(--ease-spring);
+  :where(.peer):active:not(:disabled) + & {
+    scale: var(--press-scale);
+    transition:
+      background-color var(--duration-fast) var(--ease-standard),
+      border-color var(--duration-fast) var(--ease-standard),
+      color var(--duration-fast) var(--ease-standard),
+      box-shadow var(--duration-fast) var(--ease-standard),
+      scale 80ms var(--ease-standard);
+  }
+}
+
+@utility peer-ring {
+  /* Focus ring for a decorative span that follows a native `peer` input (the input holds the focus). */
+  :where(.peer):focus-visible + & {
+    outline: var(--focus-ring-width) solid var(--focus-ring-color);
+    outline-offset: var(--focus-ring-offset);
+  }
+}
+
+@utility fx-card {
+  /* Interactive card inside a link (`<a><Card interactive/></a>`): hover lifts it a little, deepens the shadow and tints
+     the border; the press (the link's own `tap`) drops it back. Touch devices skip the hover entirely. */
+  transition:
+    translate var(--duration-base) var(--ease-standard),
+    box-shadow var(--duration-base) var(--ease-standard),
+    border-color var(--duration-fast) var(--ease-standard),
+    background-color var(--duration-fast) var(--ease-standard);
+  @media (hover: hover) and (pointer: fine) {
+    :where(a:hover) > & {
+      translate: 0 var(--hover-lift);
+      box-shadow: var(--elev-hover);
+      border-color: var(--card-hover-edge);
+      background-color: var(--color-surface-2);
+    }
+  }
+  :where(a:active) > & {
+    translate: 0 0;
+    box-shadow: none;
+  }
+}
+
+@utility fx-link {
+  /* Text link: the underline is a faint rule at rest and a solid one that draws in from the left on hover. */
+  text-decoration: none;
+  background-image:
+    linear-gradient(currentColor, currentColor),
+    linear-gradient(color-mix(in oklab, currentColor 40%, transparent), color-mix(in oklab, currentColor 40%, transparent));
+  background-position: 0 100%, 0 100%;
+  background-repeat: no-repeat;
+  background-size: 0% 3px, 100% 2px;
+  padding-bottom: 0.125rem;
+  box-decoration-break: clone;
+  transition: background-size var(--duration-base) var(--ease-enter), color var(--duration-fast) var(--ease-standard);
+  @media (hover: hover) and (pointer: fine) {
+    &:hover {
+      background-size: 100% 3px, 100% 2px;
+    }
+  }
+}
+
+@utility fx-row {
+  /* List row that is a link or a button: background tint on hover, a gentler press than a button. */
+  @apply tap;
+  --press-scale: 0.985;
+  @media (hover: hover) and (pointer: fine) {
+    &:hover:not(:disabled) {
+      background-color: var(--color-surface-3);
+    }
+  }
+}
+
+@utility fx-icon {
+  /* Round icon button: a circular tint on hover, the shared press spring. */
+  @apply tap;
+  @media (hover: hover) and (pointer: fine) {
+    &:hover:not(:disabled) {
+      background-color: color-mix(in oklab, var(--color-action) 16%, transparent);
+    }
+  }
+}
+
+@utility stagger-in {
+  /* List entrance: set --i (0-based index) inline. The delay is capped so long lists do not wait. */
+  animation: rise-in var(--duration-slow) var(--ease-enter) both;
+  animation-delay: calc(min(var(--i, 0), 8) * var(--stagger-step));
+}
+
+@utility pop-in {
+  /* A block that appears because of something the user did (not on page entry, so view transitions never silence it). */
+  animation: rise-in var(--duration-base) var(--ease-enter) both;
+}
+
+@utility pop-stagger {
+  /* Same, for the items of a list that appears at once: set --i like stagger-in. */
+  animation: rise-in var(--duration-slow) var(--ease-enter) both;
+  animation-delay: calc(min(var(--i, 0), 8) * var(--stagger-step));
+}
+
+@utility reveal-in {
+  /* Single block arriving (state illustrations, resolved content). */
+  animation: rise-in var(--duration-base) var(--ease-enter) both;
+}
+
+@utility pixel-reveal {
+  /* Pixel-art moment: the image is uncovered bottom-to-top in 8 hard steps. */
+  animation: pixel-in var(--duration-hero) steps(8, end) both;
+}
+
+/* Scene backgrounds (SceneBackground): per-scene positions arrive as custom properties. */
+@utility scene-image {
+  image-rendering: pixelated;
+  object-position: var(--scene-pos-m);
+  @media (min-width: 48rem) {
+    object-position: var(--scene-pos-d);
+  }
+}
+
+@utility scene-scrim {
+  /* Optional flat wash (no gradient) for scenes whose header needs more separation from the art. */
+  background: rgb(0 20 0 / 0.35);
+}
+
+/*
+ * Boleto (paper quiniela). A box is a real input (transparent, covering the box) plus a decorative cell.
+ * The mark is a hand-drawn X made of two ink bars, drawn on `:checked` or on `[data-marked]` for read-only boxes.
+ */
+.boleto-box {
+  position: relative;
+  display: block;
+  flex: none;
+}
+
+.boleto-input {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  opacity: 0;
+  cursor: pointer;
+}
+
+.boleto-cell {
+  position: relative;
+  display: flex;
+  width: 100%;
+  height: 100%;
+  align-items: center;
+  justify-content: center;
+  border: 2px solid var(--color-ink);
+  background: rgb(8 26 14 / 0.04);
+  color: rgb(8 26 14 / 0.55);
+  font-family: var(--font-display);
+  font-size: 1rem;
+  line-height: 1;
+  text-transform: uppercase;
+}
+
+.boleto-cell::before,
+.boleto-cell::after {
+  content: "";
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 0.28rem;
+  height: 128%;
+  border-radius: 1px;
+  background: var(--color-ink);
+  opacity: 0;
+  transform: translate(-50%, -50%) rotate(var(--boleto-angle)) scaleY(0.2);
+}
+
+.boleto-cell::before { --boleto-angle: 43deg; }
+.boleto-cell::after { --boleto-angle: -47deg; width: 0.24rem; }
+
+.boleto-input:checked + .boleto-cell,
+.boleto-cell[data-marked="true"] {
+  color: transparent;
+  background: rgb(8 26 14 / 0.08);
+}
+
+.boleto-input:checked + .boleto-cell::before,
+.boleto-input:checked + .boleto-cell::after,
+.boleto-cell[data-marked="true"]::before,
+.boleto-cell[data-marked="true"]::after {
+  opacity: 1;
+  transform: translate(-50%, -50%) rotate(var(--boleto-angle)) scaleY(1);
+}
+
+.boleto-cell {
+  transition: scale var(--duration-base) var(--ease-spring), background-color var(--duration-fast) var(--ease-standard);
+}
+
+.boleto-cell::before,
+.boleto-cell::after {
+  transition: transform var(--duration-fast) var(--ease-enter), opacity var(--duration-fast) var(--ease-standard);
+}
+.boleto-cell::after { transition-delay: calc(var(--stagger-step) + 5ms); }
+
+.boleto-input:active:not(:disabled) + .boleto-cell {
+  scale: var(--press-scale);
+  transition-duration: 80ms, var(--duration-fast);
+  transition-timing-function: var(--ease-standard);
+}
+
+.boleto-input:hover:not(:disabled) + .boleto-cell { background: rgb(8 26 14 / 0.14); }
+
+.boleto-input:focus-visible + .boleto-cell {
+  outline: 0.1875rem solid var(--color-ink);
+  outline-offset: 0.125rem;
+}
+
+.boleto-box[data-size="sm"] .boleto-cell { border-width: 1px; font-size: 0.5rem; }
+.boleto-box[data-size="sm"] .boleto-cell::before,
+.boleto-box[data-size="sm"] .boleto-cell::after { width: 0.125rem; }
+
+/* Boleto sheet over the porra page (see BoletoFrame): on desktop the page content makes room for the right panel,
+   on mobile the page's own action bar hides while the minimized peek bar takes its place. */
+@media (min-width: 64rem) {
+  #main-content,
+  .porra-bar {
+    transition: padding-right var(--duration-slow) var(--ease-enter);
+  }
+  html[data-boleto-sheet="panel"] #main-content { padding-right: 30rem; }
+  html[data-boleto-sheet="panel"] .porra-bar { padding-right: 30rem; }
+}
+.porra-bar {
+  transition:
+    translate var(--duration-base) var(--ease-enter),
+    opacity var(--duration-base) var(--ease-standard);
+}
+html[data-boleto-sheet="peek"] .porra-bar {
+  /* The minimized peek bar takes its place: slide it away instead of removing it. */
+  translate: 0 var(--overlay-offset);
+  opacity: 0;
+  visibility: hidden;
+  transition:
+    translate var(--duration-fast) var(--ease-exit),
+    opacity var(--duration-fast) var(--ease-exit),
+    visibility 0s linear var(--duration-fast);
+}
+
+/*
+ * View transitions (React <ViewTransition> + Link transitionTypes, see src/components/motion/page-transition.tsx).
+ * Page classes: curtain-in / curtain-out (nav-forward and nav-back), tab-in / tab-out (bottom-nav crossfade),
+ * reveal / reveal-out (untyped navigations and Suspense reveals).
+ *
+ * Brand curtain (nav-forward / nav-back). Two full-screen fixed layers (`.curtain-lead`, `.curtain-trail`, rendered by
+ * <Curtain> in the app shell) carry a view-transition-name; their transition GROUPS are painted as the bands and slid
+ * across the screen. Timeline over --duration-curtain: 0-50% the band rises and covers the old page (ease-exit),
+ * at 50% the screen is fully covered, so the page (and root background) swap by a hard cut, 50-100% the band keeps
+ * going and uncovers the new page (ease-enter). Forward travels bottom to top; back sweeps left to right, slower, with the
+ * band and pages fading instead of hard cuts (--curtain-from / --curtain-to). The header, bottom nav and progress bar have their own higher groups, so they stay put above the band.
+ */
+@keyframes vt-fade {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes vt-rise {
+  from { translate: 0 var(--motion-distance); }
+  to { translate: 0 0; }
+}
+
+/* The band: enters from --curtain-from, covers at 50%, leaves to --curtain-to. Per-interval easing keeps the speed continuous at the middle. */
+@keyframes vt-curtain {
+  0% { translate: var(--curtain-from, 0 100%); animation-timing-function: var(--ease-exit); }
+  50% { translate: 0 0; animation-timing-function: var(--ease-enter); }
+  100% { translate: var(--curtain-to, 0 -100%); }
+}
+
+/* Hard cuts at the covered midpoint. */
+@keyframes vt-curtain-hide {
+  0%, 49.9% { opacity: 1; }
+  50%, 100% { opacity: 0; }
+}
+
+@keyframes vt-curtain-show {
+  0%, 49.9% { opacity: 0; translate: 0 var(--motion-distance); }
+  50% { opacity: 0; translate: 0 var(--motion-distance); }
+  100% { opacity: 1; translate: 0 0; }
+}
+
+/* Back curtain: the band fades in while it sweeps in and fades out while it leaves. */
+@keyframes vt-curtain-band-fade {
+  0% { opacity: 0; }
+  35%, 65% { opacity: 1; }
+  100% { opacity: 0; }
+}
+
+/* Back curtain: soft crossfade of the pages around the midpoint instead of a hard cut. */
+@keyframes vt-curtain-fade-out {
+  0%, 20% { opacity: 1; }
+  50%, 100% { opacity: 0; }
+}
+@keyframes vt-curtain-fade-in {
+  0%, 50% { opacity: 0; }
+  85%, 100% { opacity: 1; }
+}
+
+@keyframes vt-curtain-cut {
+  0%, 49.9% { opacity: 0; }
+  50%, 100% { opacity: 1; }
+}
+
+/* The layers are inert on the live page: transparent, fixed, never hit-tested. The painting happens on their groups. */
+.curtain-lead,
+.curtain-trail {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+}
+.curtain-lead { view-transition-name: curtain-lead; }
+.curtain-trail { view-transition-name: curtain-trail; }
+
+/* Let clicks reach the live page while a transition runs. */
+::view-transition {
+  pointer-events: none;
+}
+
+/* The unnamed rest of the page (background only; header and nav are named) does not crossfade. */
+::view-transition-old(root),
+::view-transition-new(root) {
+  animation: none;
+}
+
+/* Persistent shell: header and bottom nav never animate and stay above the sliding content. */
+::view-transition-group(app-header),
+::view-transition-group(app-ticker),
+::view-transition-group(app-nav) {
+  animation: none;
+  z-index: 100;
+}
+::view-transition-old(app-header),
+::view-transition-old(app-ticker),
+::view-transition-old(app-nav) {
+  display: none;
+}
+::view-transition-new(app-header),
+::view-transition-new(app-ticker),
+::view-transition-new(app-nav) {
+  animation: none;
+}
+
+/* The curtain bands exist only for curtain transitions; every other transition never shows them. */
+::view-transition-group(curtain-lead),
+::view-transition-group(curtain-trail) {
+  display: none;
+}
+::view-transition-old(curtain-lead),
+::view-transition-old(curtain-trail),
+::view-transition-new(curtain-lead),
+::view-transition-new(curtain-trail) {
+  display: none; /* the band is the group's own background; the (empty) snapshots add nothing */
+}
+
+:root:active-view-transition-type(nav-forward, nav-back) {
+  --curtain-from: 0 100%;
+  --curtain-to: 0 -100%;
+  --curtain-edge-angle: 180deg;
+}
+/* Back sweeps left to right, like a back gesture, and takes a little longer. */
+:root:active-view-transition-type(nav-back) {
+  --curtain-from: -100% 0;
+  --curtain-to: 100% 0;
+  --curtain-edge-angle: 90deg;
+}
+@media (prefers-reduced-motion: no-preference) {
+  :root:active-view-transition-type(nav-back) {
+    --duration-curtain: var(--duration-curtain-back);
+  }
+}
+
+:root:active-view-transition-type(nav-forward, nav-back)::view-transition-group(curtain-lead),
+:root:active-view-transition-type(nav-forward, nav-back)::view-transition-group(curtain-trail) {
+  display: block;
+  animation: var(--duration-curtain) linear both vt-curtain;
+}
+
+/* Lead band: brand green, accent edge lines on both borders, the logo stamped in the middle (visible only while it covers). */
+:root:active-view-transition-type(nav-forward, nav-back)::view-transition-group(curtain-lead) {
+  z-index: 60;
+  background:
+    url("/logo.png") center / min(30vw, 9rem) auto no-repeat,
+    linear-gradient(var(--curtain-edge-angle, 180deg), var(--color-curtain-edge) 0 0.25rem, transparent 0.25rem calc(100% - 0.25rem), var(--color-curtain-edge) calc(100% - 0.25rem)),
+    var(--color-curtain);
+}
+
+/* Deeper band: same path, a beat later, so it shows as a darker strip trailing the lead band. */
+:root:active-view-transition-type(nav-forward, nav-back)::view-transition-group(curtain-trail) {
+  z-index: 59;
+  background: var(--color-curtain-deep);
+  animation-delay: var(--curtain-lag);
+}
+
+/* Back: the bands also fade, and the pages crossfade softly (the trail keeps its lag). */
+:root:active-view-transition-type(nav-back)::view-transition-group(curtain-lead),
+:root:active-view-transition-type(nav-back)::view-transition-group(curtain-trail) {
+  animation:
+    var(--duration-curtain) linear both vt-curtain,
+    var(--duration-curtain) linear both vt-curtain-band-fade;
+}
+:root:active-view-transition-type(nav-back)::view-transition-old(.curtain-out),
+:root:active-view-transition-type(nav-back)::view-transition-old(root) {
+  animation: var(--duration-curtain) var(--ease-standard) both vt-curtain-fade-out;
+}
+:root:active-view-transition-type(nav-back)::view-transition-new(.curtain-in),
+:root:active-view-transition-type(nav-back)::view-transition-new(root) {
+  animation: var(--duration-curtain) var(--ease-standard) both vt-curtain-fade-in;
+}
+
+/* Pages: the old one holds until the band covers it, the new one appears at the midpoint with a light rise. */
+::view-transition-old(.curtain-out) {
+  animation: var(--duration-curtain) linear both vt-curtain-hide;
+}
+::view-transition-new(.curtain-in) {
+  animation: var(--duration-curtain) var(--ease-enter) both vt-curtain-show;
+}
+:root:active-view-transition-type(nav-forward, nav-back)::view-transition-old(root) {
+  animation: var(--duration-curtain) linear both vt-curtain-hide;
+}
+:root:active-view-transition-type(nav-forward, nav-back)::view-transition-new(root) {
+  animation: var(--duration-curtain) linear both vt-curtain-cut;
+}
+
+/* Bottom-nav tab switch: quick crossfade, no movement. */
+::view-transition-old(.tab-out) {
+  animation: var(--duration-fast) var(--ease-exit) both vt-fade reverse;
+}
+::view-transition-new(.tab-in) {
+  animation: var(--duration-fast) var(--ease-enter) both vt-fade;
+}
+
+/* Untyped navigations and Suspense/skeleton to content: fade plus slight rise. */
+::view-transition-old(.reveal-out) {
+  animation: var(--duration-fast) var(--ease-exit) both vt-fade reverse;
+}
+::view-transition-new(.reveal) {
+  animation:
+    var(--duration-base) var(--ease-enter) both vt-fade,
+    var(--duration-base) var(--ease-enter) both vt-rise;
+}
+
+/* Reduced motion: no curtain, no movement. A short crossfade so the swap is not abrupt. */
+@media (prefers-reduced-motion: reduce) {
+  ::view-transition-group(*) {
+    animation-duration: 0s !important;
+  }
+  :root:active-view-transition-type(nav-forward, nav-back)::view-transition-group(curtain-lead),
+  :root:active-view-transition-type(nav-forward, nav-back)::view-transition-group(curtain-trail) {
+    display: none;
+  }
+  ::view-transition-old(.curtain-out) {
+    animation: var(--duration-fade) linear both vt-fade reverse;
+  }
+  ::view-transition-new(.curtain-in) {
+    animation: var(--duration-fade) linear both vt-fade;
+  }
+  :root:active-view-transition-type(nav-forward, nav-back)::view-transition-old(root),
+  :root:active-view-transition-type(nav-forward, nav-back)::view-transition-new(root) {
+    animation: none;
+  }
+}
+
+/*
+ * Page entry (EntryMarker sets data-entry on the page root): `cold` is a first load or a refresh, so lists stagger in
+ * and illustrations uncover themselves. `tab`, `curtain` and `vt` navigations already animate the whole page through a
+ * view transition, so the inner entrances stand down instead of animating twice; pixel art waits for the page to show
+ * (for the curtain: until the band has covered the screen and the new page is cut in, at half the curtain duration).
+ */
+[data-entry="tab"] :is(.stagger-in, .reveal-in),
+[data-entry="curtain"] :is(.stagger-in, .reveal-in),
+[data-entry="vt"] :is(.stagger-in, .reveal-in) {
+  animation: none;
+}
+
+[data-entry="tab"] .pixel-reveal,
+[data-entry="vt"] .pixel-reveal {
+  animation-delay: var(--duration-base);
+}
+
+[data-entry="curtain"] .pixel-reveal {
+  animation-delay: calc(var(--duration-curtain) / 2 + var(--duration-fast));
+}
+
+/*
+ * Reveal (src/components/motion/reveal.tsx): a live-region slot that opens and closes by animating its row height
+ * (0fr <-> 1fr) plus a short fade and rise, for inline messages, validation errors and conditional panels.
+ */
+.reveal {
+  display: grid;
+  grid-template-rows: 0fr;
+  opacity: 0;
+  translate: 0 calc(var(--motion-distance) * -0.5);
+  /* Inside a grid with a gap, set --reveal-gap to that gap so the empty slot leaves no phantom space. */
+  margin-top: calc(var(--reveal-gap, 0px) * -1);
+  transition:
+    margin-top var(--duration-fast) var(--ease-exit),
+    grid-template-rows var(--duration-fast) var(--ease-exit),
+    opacity var(--duration-fast) var(--ease-exit),
+    translate var(--duration-fast) var(--ease-exit);
+}
+
+.reveal[data-open="true"] {
+  grid-template-rows: 1fr;
+  opacity: 1;
+  translate: 0 0;
+  margin-top: 0;
+  transition:
+    margin-top var(--duration-base) var(--ease-enter),
+    grid-template-rows var(--duration-base) var(--ease-enter),
+    opacity var(--duration-base) var(--ease-enter),
+    translate var(--duration-base) var(--ease-enter);
+}
+
+.reveal-inner {
+  min-height: 0;
+  overflow: hidden;
+}
+
+/*
+ * Overlays. Native <dialog> keeps its top-layer and display state through the exit because `display` and `overlay`
+ * transition discretely, so opening and closing (button, Escape, backdrop) are pure CSS:
+ *  - default: bottom sheet that rises from its own height
+ *  - `overlay-dialog--center`: from 40rem it becomes a centered card that pops in with the spring
+ *  - `overlay-dialog--panel`: from 64rem it slides in from the right edge
+ * Enter is slower and decelerates, exit is faster and accelerates. The spring is only used for the centered pop.
+ */
+.overlay-dialog {
+  opacity: 0;
+  translate: 0 var(--overlay-offset);
+  transition:
+    opacity var(--duration-fast) var(--ease-exit),
+    translate var(--duration-base) var(--ease-exit),
+    scale var(--duration-base) var(--ease-exit),
+    overlay var(--duration-base) allow-discrete,
+    display var(--duration-base) allow-discrete;
+}
+
+.overlay-dialog[open] {
+  opacity: 1;
+  translate: 0 0;
+  transition:
+    opacity var(--duration-base) var(--ease-enter),
+    translate var(--duration-slow) var(--ease-enter),
+    scale var(--duration-slow) var(--ease-spring),
+    overlay var(--duration-slow) allow-discrete,
+    display var(--duration-slow) allow-discrete;
+}
+
+@starting-style {
+  .overlay-dialog[open] {
+    opacity: 0;
+    translate: 0 var(--overlay-offset);
+  }
+}
+
+.overlay-dialog::backdrop {
+  background: rgb(8 26 14 / 0.75);
+  opacity: 0;
+  transition:
+    opacity var(--duration-base) var(--ease-exit),
+    overlay var(--duration-base) allow-discrete,
+    display var(--duration-base) allow-discrete;
+}
+
+.overlay-dialog[open]::backdrop {
+  opacity: 1;
+  transition:
+    opacity var(--duration-slow) var(--ease-enter),
+    overlay var(--duration-slow) allow-discrete,
+    display var(--duration-slow) allow-discrete;
+}
+
+@starting-style {
+  .overlay-dialog[open]::backdrop {
+    opacity: 0;
+  }
+}
+
+@media (min-width: 40rem) {
+  .overlay-dialog--center {
+    translate: 0 var(--motion-distance);
+    scale: var(--overlay-scale);
+  }
+
+  .overlay-dialog--center[open] {
+    translate: 0 0;
+    scale: 1;
+  }
+
+  @starting-style {
+    .overlay-dialog--center[open] {
+      translate: 0 var(--motion-distance);
+      scale: var(--overlay-scale);
+    }
+  }
+}
+
+@media (min-width: 64rem) {
+  .overlay-dialog--panel {
+    translate: var(--overlay-offset) 0;
+  }
+
+  .overlay-dialog--panel[open] {
+    translate: 0 0;
+  }
+
+  @starting-style {
+    .overlay-dialog--panel[open] {
+      translate: var(--overlay-offset) 0;
+    }
+  }
+}
+
+/* Drawer: an element that stays mounted and slides in from the bottom edge (minimized boleto bar, match info). */
+.drawer {
+  opacity: 0;
+  visibility: hidden;
+  translate: 0 var(--overlay-offset);
+  transition:
+    opacity var(--duration-fast) var(--ease-exit),
+    translate var(--duration-base) var(--ease-exit),
+    visibility 0s linear var(--duration-base);
+}
+
+.drawer[data-open="true"] {
+  opacity: 1;
+  visibility: visible;
+  translate: 0 0;
+  transition:
+    opacity var(--duration-base) var(--ease-enter),
+    translate var(--duration-slow) var(--ease-enter),
+    visibility 0s;
+}
+
+@starting-style {
+  .drawer[data-open="true"] {
+    opacity: 0;
+    translate: 0 var(--overlay-offset);
+  }
+}
+
+/* <details>: the body opens and closes with a height transition where ::details-content exists (progressive). */
+details::details-content {
+  block-size: 0;
+  overflow: clip;
+  transition:
+    block-size var(--duration-base) var(--ease-enter),
+    content-visibility var(--duration-base) allow-discrete;
+}
+
+details[open]::details-content {
+  block-size: auto;
+}
+
+/* Skeletons: invisible for --skeleton-delay (fast loads never flash them), then fade in with a brand shimmer sweep. */
+@keyframes skeleton-in {
+  from { opacity: 0; }
+}
+
+@keyframes skeleton-sweep {
+  to { translate: 100% 0; }
+}
+
+.skeleton {
+  position: relative;
+  display: block;
+  overflow: hidden;
+  background: var(--skeleton-bg, var(--color-skeleton));
+  animation: skeleton-in var(--duration-base) var(--ease-standard) var(--skeleton-delay) both;
+}
+
+.skeleton::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  translate: -100% 0;
+  background: linear-gradient(90deg, transparent, color-mix(in oklab, var(--color-action) 12%, transparent), transparent);
+  animation: skeleton-sweep var(--duration-loop) var(--ease-standard) infinite;
+}
+
+/* Anything else that must wait before showing (hard-load fallbacks): same delay, fade only. */
+.delayed-in {
+  animation: skeleton-in var(--duration-base) var(--ease-standard) var(--skeleton-delay) both;
+}
+
+/* Pending state of the pressed link (AppLink): a shimmer wash over the link, shown only if the wait lasts. */
+@keyframes link-pending-in {
+  from { opacity: 0; }
+}
+
+.link-pending {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  border-radius: inherit;
+  pointer-events: none;
+  opacity: 0;
+}
+
+.link-pending::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  translate: -100% 0;
+  background: linear-gradient(90deg, transparent, color-mix(in oklab, var(--color-action) 22%, transparent), transparent);
+}
+
+.link-pending[data-pending="true"] {
+  opacity: 1;
+  animation: link-pending-in var(--duration-base) var(--ease-standard) 400ms backwards;
+}
+
+.link-pending[data-pending="true"]::after {
+  animation: skeleton-sweep var(--duration-loop) var(--ease-standard) infinite;
+}
+
+/* Global navigation bar (NavProgress): only for a genuinely slow navigation (appears after 400ms), creeps forward, completes when the route arrives. */
+@keyframes nav-progress-creep {
+  from { scale: 0.04 1; }
+  to { scale: 0.92 1; }
+}
+
+.nav-progress {
+  position: fixed;
+  inset: 0 0 auto 0;
+  z-index: 60;
+  height: var(--nav-progress-h);
+  pointer-events: none;
+  transform-origin: 0 50%;
+  background: var(--nav-progress-bg);
+  opacity: 0;
+  transition: opacity var(--duration-base) var(--ease-exit);
+  view-transition-name: nav-progress;
+}
+
+.nav-progress[data-active="true"] {
+  opacity: 1;
+  transition: opacity var(--duration-fast) var(--ease-enter) 400ms;
+  animation: nav-progress-creep 12s var(--ease-enter) 400ms both;
+}
+
+::view-transition-group(nav-progress) {
+  animation: none;
+  z-index: 101;
+}
+::view-transition-old(nav-progress) {
+  display: none;
+}
+::view-transition-new(nav-progress) {
+  animation: none;
+}
+
+/*
+ * Next-jornada ticker (JornadaTicker). Fades in when its data streams in; the strip is a persistent-shell element
+ * (own view-transition group, see above) so the curtain passes behind it exactly like behind the header.
+ * Marquee: transform only. Two identical groups, the track moves by -50% (one group) per loop; duration scales with
+ * the chip count so the drift speed stays constant. Paused while hovered or holding focus.
+ */
+@keyframes ticker-in {
+  from { opacity: 0; }
+}
+
+@keyframes ticker-drift {
+  to { transform: translate3d(-50%, 0, 0); }
+}
+
+.ticker {
+  view-transition-name: app-ticker;
+  animation: ticker-in var(--duration-slow) var(--ease-standard) both;
+}
+
+.ticker-viewport {
+  overflow: hidden;
+  -webkit-mask-image: linear-gradient(90deg, transparent, #000 1.25rem, #000 calc(100% - 1.25rem), transparent);
+  mask-image: linear-gradient(90deg, transparent, #000 1.25rem, #000 calc(100% - 1.25rem), transparent);
+}
+
+.ticker-track {
+  display: flex;
+  width: max-content;
+  animation: ticker-drift calc(var(--ticker-chips, 15) * 4s) linear infinite;
+  will-change: transform;
+}
+
+.ticker-group {
+  display: flex;
+  flex-shrink: 0;
+  gap: 0.5rem;
+  padding-right: 0.5rem;
+}
+
+.ticker:hover .ticker-track,
+.ticker:focus-within .ticker-track {
+  animation-play-state: paused;
+}
+
+/* Reduced motion: no drift. A static row the user scrolls by hand, without the loop copy. */
+@media (prefers-reduced-motion: reduce) {
+  .ticker-viewport {
+    overflow-x: auto;
+    scrollbar-width: none;
+    -webkit-mask-image: none;
+    mask-image: linear-gradient(90deg, transparent, #000 0.75rem, #000 calc(100% - 0.75rem), transparent);
+  }
+  .ticker-track {
+    animation: none;
+    will-change: auto;
+  }
+  .ticker-group[aria-hidden="true"] {
+    display: none;
+  }
+}
+
+/* Paper surfaces (boleto) are light: their controls use the ink color for the focus ring. */
+.boleto-paper {
+  --focus-ring-color: var(--color-ink);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .skeleton::after,
+  .link-pending[data-pending="true"]::after {
+    animation: none;
+  }
+  .nav-progress[data-active="true"] {
+    animation: none;
+    scale: 0.6 1;
+  }
+}

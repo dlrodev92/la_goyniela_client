@@ -1,0 +1,82 @@
+openapi: 3.1.0
+info:
+  title: La Goyniela API
+  version: 0.0.0-draft
+  description: >-
+    Draft contract-first integration boundary. It intentionally contains no domain
+    operations until product behavior and API semantics are reviewed.
+jsonSchemaDialect: https://json-schema.org/draft/2020-12/schema
+paths: {}
+components:
+  responses:
+    Problem:
+      description: A problem-details response for an unsuccessful request.
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/ProblemDetails'
+  schemas:
+    ProblemDetails:
+      type: object
+      description: RFC 9457-style problem details for non-success JSON responses.
+      properties:
+        type:
+          type: string
+          format: uri-reference
+          default: about:blank
+        title:
+          type: string
+        status:
+          type: integer
+          minimum: 100
+          maximum: 599
+        detail:
+          type: string
+        instance:
+          type: string
+          format: uri-reference
+      additionalProperties: true
+    PaginationMetadata:
+      type: object
+      description: >-
+        Strategy-neutral collection metadata. Extend only after choosing a
+        pagination strategy in the contract policy.
+      required:
+        - count
+        - hasMore
+      properties:
+        count:
+          type: integer
+          minimum: 0
+          description: Number of items included in the current response.
+        hasMore:
+          type: boolean
+          description: Whether another collection segment is available.
+        totalItems:
+          type: integer
+          minimum: 0
+          description: Total item count when the operation guarantees it.
+      additionalProperties: false
+    ImageReference:
+      type: object
+      description: An API-owned image location consumed as an opaque reference.
+      required:
+        - url
+      properties:
+        url:
+          type: string
+          format: uri-reference
+          description: Retrievable URL supplied by the API; clients do not construct it.
+        mediaType:
+          type: string
+          description: Image media type when known.
+          pattern: ^image/
+        width:
+          type: integer
+          minimum: 1
+          description: Intrinsic pixel width when known.
+        height:
+          type: integer
+          minimum: 1
+          description: Intrinsic pixel height when known.
+      additionalProperties: false
