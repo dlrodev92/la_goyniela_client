@@ -2,7 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { createRequire } from "node:module";
 const require = createRequire(import.meta.url);
-const { invitationText, whatsappShareUrl } = require("../build/tests/features/groups/domain/groups.js");
+const { invitationText, whatsappShareUrl, inviteUrl, parseInviteCode, postAuthPath, joinPathFor } = require("../build/tests/features/groups/domain/groups.js");
 const { createGroupsGateway } = require("../build/tests/features/groups/infrastructure/http-groups-gateway.js");
 const { createGroup, joinGroup, getGroup, leaveGroup, normalizeJoinCode, FieldValidationError } = require("../build/tests/features/groups/application/groups.js");
 const { ServiceError } = require("../build/tests/lib/http/errors.js");
@@ -147,11 +147,29 @@ test("create trims input and drops a blank description", async () => {
   assert.deepEqual(sent, { name: "Peña", description: "Café" });
 });
 
-test("whatsappShareUrl encodes the Spanish invitation with group name and code", () => {
-  const text = invitationText("Peña & amigos", "A3F9KX");
-  assert.equal(text, "Únete a mi peña «Peña & amigos» en La Goyniela con el código A3F9KX.");
-  const url = whatsappShareUrl("Peña & amigos", "A3F9KX");
+const LINK = "https://app.example.com/invitacion/A3F9KX";
+
+test("inviteUrl builds the public invite link and encodes the code", () => {
+  assert.equal(inviteUrl("https://app.example.com", "A3F9KX"), LINK);
+  assert.equal(inviteUrl("https://app.example.com", "a/b?"), "https://app.example.com/invitacion/a%2Fb%3F");
+});
+
+test("whatsappShareUrl encodes the Spanish invitation with group name, link and code", () => {
+  const text = invitationText("Peña & amigos", "A3F9KX", LINK);
+  assert.equal(text, `Únete a mi peña «Peña & amigos» en La Goyniela: ${LINK} (código A3F9KX).`);
+  const url = whatsappShareUrl("Peña & amigos", "A3F9KX", LINK);
   assert.ok(url.startsWith("https://wa.me/?text="));
   assert.equal(new URL(url).searchParams.get("text"), text);
   assert.ok(!url.slice("https://wa.me/?text=".length).includes("&"));
+});
+
+test("parseInviteCode accepts well-formed codes (normalized) and rejects the rest", () => {
+  assert.equal(parseInviteCode(" a3f9kx "), "A3F9KX");
+  for (const bad of [undefined, null, 5, "", "ABC", "A3F9KXZZZ", "A3F9K!", "A3F9 KX", "../../x1", "A3F9KX\n/x"]) assert.equal(parseInviteCode(bad), null);
+});
+
+test("postAuthPath goes to the prefilled join page for a valid pending code, else the dashboard", () => {
+  assert.equal(postAuthPath("a3f9kx"), "/groups/join?code=A3F9KX");
+  assert.equal(joinPathFor("A3F9KX"), "/groups/join?code=A3F9KX");
+  for (const none of [undefined, "", "nope!", "https://evil.example"]) assert.equal(postAuthPath(none), "/dashboard");
 });

@@ -11,7 +11,8 @@ import { joinGroupAction } from "../server/actions";
 import { initialFormState } from "../application/groups";
 import { JOIN_CODE_MAX } from "../domain/groups";
 
-export function JoinGroupForm() {
+/** `initialCode` comes from a validated invite link; it only prefills, the user still submits. */
+export function JoinGroupForm({ initialCode }: { initialCode?: string }) {
   const [state, action, pending] = useActionState(joinGroupAction, initialFormState);
   return (
     <Card as="div" padding="lg">
@@ -20,7 +21,7 @@ export function JoinGroupForm() {
           hint="Pídeselo a un admin de la peña. No distingue entre mayúsculas y minúsculas.">
           {(control) => (
             <CodeInput {...control} name="joinCode" maxLength={JOIN_CODE_MAX + 4}
-              defaultValue={state.values.joinCode} disabled={pending} />
+              defaultValue={state.values.joinCode || initialCode} disabled={pending} />
           )}
         </Field>
         <Reveal>{state.error && <StatusMessage tone="error">{state.error}</StatusMessage>}</Reveal>

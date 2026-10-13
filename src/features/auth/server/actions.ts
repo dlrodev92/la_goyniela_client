@@ -8,6 +8,7 @@ import { initialRegisterState, type RegisterState } from "../domain/register";
 import { createAuthGateway } from "../infrastructure/http-auth-gateway";
 import { safeMessage, ServiceError } from "../../../lib/http/errors";
 import { apiBaseUrl } from "./config";
+import { consumePostAuthPath } from "./post-auth";
 import { SESSION_COOKIE, cookieOptions, setSessionCookie } from "./session";
 
 export async function loginAction(_previous: { error: string }, formData: FormData): Promise<{ error: string }> {
@@ -17,7 +18,7 @@ export async function loginAction(_previous: { error: string }, formData: FormDa
     });
     await setSessionCookie(session.accessToken);
   } catch (error) { return { error: safeMessage(error) }; }
-  redirect("/dashboard");
+  redirect(await consumePostAuthPath());
 }
 
 const text = (formData: FormData, key: string) => {
@@ -36,7 +37,7 @@ export async function registerAction(_previous: RegisterState, formData: FormDat
     if (!(error instanceof ServiceError)) throw error;
     return { ...initialRegisterState, error: safeMessage(error), emailTaken: error.code === "email-taken", values };
   }
-  redirect("/dashboard");
+  redirect(await consumePostAuthPath());
 }
 
 export async function logoutAction() {

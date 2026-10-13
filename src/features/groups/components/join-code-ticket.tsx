@@ -11,7 +11,7 @@ import { StatusMessage } from "@/components/ui/status-message";
 import { invitationText, whatsappShareUrl } from "../domain/groups";
 import ticketArt from "../../../../public/asset_ticket.png";
 
-type Props = { code: string; groupName: string; memberCount: number; maxMembers: number };
+type Props = { code: string; groupName: string; memberCount: number; maxMembers: number; inviteUrl: string };
 
 const ticketButton =
   "tap inline-flex min-h-touch w-full items-center justify-center gap-2 rounded-pill border-(length:--bw) px-5 font-ui text-label font-bold uppercase tracking-wide";
@@ -19,10 +19,10 @@ const ticketButton =
 type Feedback = { tone: "success" | "error"; text: string } | null;
 
 /** Membership ticket (cream paper) with the join code, a copy button and a share action. Clipboard use fails soft. */
-export function JoinCodeTicket({ code, groupName, memberCount, maxMembers }: Props) {
+export function JoinCodeTicket({ code, groupName, memberCount, maxMembers, inviteUrl }: Props) {
   const [copied, setCopied] = useState(false);
   const [feedback, setFeedback] = useState<Feedback>(null);
-  const invitation = invitationText(groupName, code);
+  const invitation = invitationText(groupName, code, inviteUrl);
 
   async function copy(text: string, done: () => void) {
     try {
@@ -42,13 +42,13 @@ export function JoinCodeTicket({ code, groupName, memberCount, maxMembers }: Pro
   async function share() {
     if (typeof navigator.share === "function") {
       try {
-        await navigator.share({ text: invitation });
+        await navigator.share({ title: `Peña «${groupName}» en La Goyniela`, text: invitation, url: inviteUrl });
         return;
       } catch (error) {
         if (error instanceof DOMException && error.name === "AbortError") return;
       }
     }
-    await copy(invitation, () => setFeedback({ tone: "success", text: "Invitación copiada." }));
+    await copy(inviteUrl, () => setFeedback({ tone: "success", text: "Enlace de invitación copiado." }));
   }
 
   return (
@@ -71,7 +71,7 @@ export function JoinCodeTicket({ code, groupName, memberCount, maxMembers }: Pro
           {code}
         </code>
         <p className="text-label">
-          Comparte este código para que tus amigos se unan.{" "}
+          Comparte el enlace o el código para que tus amigos se unan.{" "}
           <span className="tabular-nums">{memberCount} de {maxMembers} plazas ocupadas.</span>
         </p>
       </div>
@@ -89,7 +89,7 @@ export function JoinCodeTicket({ code, groupName, memberCount, maxMembers }: Pro
             Compartir
           </button>
           <a
-            href={whatsappShareUrl(groupName, code)}
+            href={whatsappShareUrl(groupName, code, inviteUrl)}
             target="_blank"
             rel="noopener noreferrer"
             className={`${ticketButton} border-ink bg-transparent text-ink no-underline hover-fine:bg-ink/10 hover-fine:shadow-(--elev-hover) sm:col-span-2`}

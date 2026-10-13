@@ -82,10 +82,33 @@ export function memberActions(
 export const matchesGroupName = (typed: unknown, groupName: string): boolean =>
   typeof typed === "string" && typed.trim() === groupName.trim();
 
+/** Cookie that carries an invite code from the public invite link through sign-up/login. */
+export const PENDING_JOIN_COOKIE = "pending_join_code";
+
+/** A well-formed join code (trimmed, uppercased), or null. Gate for anything read from a URL or cookie. */
+export function parseInviteCode(value: unknown): string | null {
+  if (typeof value !== "string") return null;
+  const code = value.trim().toUpperCase();
+  return code.length >= JOIN_CODE_MIN && code.length <= JOIN_CODE_MAX && /^[A-Z0-9]+$/.test(code) ? code : null;
+}
+
+/** Page where a signed-in user confirms joining with the code prefilled. */
+export const joinPathFor = (code: string): string => `/groups/join?code=${encodeURIComponent(code)}`;
+
+/** Where to land after authenticating: the join page for a pending invite, the dashboard otherwise. */
+export const postAuthPath = (pendingCode: unknown): string => {
+  const code = parseInviteCode(pendingCode);
+  return code ? joinPathFor(code) : "/dashboard";
+};
+
+/** Public invite link: signs people up (or straight to the join page when logged in). */
+export const inviteUrl = (origin: string, code: string): string =>
+  `${origin}/invitacion/${encodeURIComponent(code)}`;
+
 /** Spanish invitation shared from the join-code ticket (native share, clipboard and WhatsApp). */
-export const invitationText = (groupName: string, code: string): string =>
-  `Únete a mi peña «${groupName}» en La Goyniela con el código ${code}.`;
+export const invitationText = (groupName: string, code: string, url: string): string =>
+  `Únete a mi peña «${groupName}» en La Goyniela: ${url} (código ${code}).`;
 
 /** WhatsApp deep link (opens the chat picker with the text prefilled). */
-export const whatsappShareUrl = (groupName: string, code: string): string =>
-  `https://wa.me/?text=${encodeURIComponent(invitationText(groupName, code))}`;
+export const whatsappShareUrl = (groupName: string, code: string, url: string): string =>
+  `https://wa.me/?text=${encodeURIComponent(invitationText(groupName, code, url))}`;

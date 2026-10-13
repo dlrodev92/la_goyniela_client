@@ -6,6 +6,7 @@ import { AuthPage, AuthSwitch, authLinkClasses } from "@/features/auth/component
 import { LoginForm } from "@/features/auth/components/login-form";
 import { ProviderButtons } from "@/features/auth/components/provider-buttons";
 import { loginErrorMessage } from "@/features/auth/domain/oauth";
+import { peekPostAuthPath } from "@/features/auth/server/post-auth";
 import { getOptionalUser } from "@/features/auth/server/session";
 import { trims } from "@/components/ui/sticker";
 import vote from "../../../public/vote_image.png";
@@ -14,7 +15,7 @@ export const metadata: Metadata = { title: "Iniciar sesión" };
 
 export default async function LoginPage({ searchParams }: { searchParams: Promise<{ error?: string | string[] }> }) {
   // Stale or inactive sessions resolve to null (no redirect), so an old cookie can never loop back here.
-  if (await getOptionalUser()) redirect("/dashboard");
+  if (await getOptionalUser()) redirect(await peekPostAuthPath());
   const { error } = await searchParams;
   const message = loginErrorMessage(Array.isArray(error) ? error[0] : error);
   return (

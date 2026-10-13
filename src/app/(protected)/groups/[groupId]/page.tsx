@@ -1,13 +1,15 @@
 import type { Metadata } from "next";
 import football from "../../../../../public/asset_football.png";
 import { Sticker } from "@/components/ui/sticker";
+import { headers } from "next/headers";
 import { notFound } from "next/navigation";
 import { UsersThree } from "@phosphor-icons/react/dist/ssr/UsersThree";
 import { AutoRefresh } from "@/components/shell/auto-refresh";
 import { PageContainer } from "@/components/shell/page-container";
 import { SectionBar } from "@/components/ui/section-bar";
+import { appOrigin } from "@/features/auth/server/oauth-config";
 import { requireUser } from "@/features/auth/server/session";
-import { canDeleteGroup, canManageGroup, isCreator } from "@/features/groups/domain/groups";
+import { canDeleteGroup, canManageGroup, inviteUrl, isCreator } from "@/features/groups/domain/groups";
 import { DeleteGroupControl } from "@/features/groups/components/delete-group-control";
 import { GroupSettingsControl } from "@/features/groups/components/group-settings-control";
 import { JoinCodeTicket } from "@/features/groups/components/join-code-ticket";
@@ -20,11 +22,22 @@ import { isRouteId } from "@/lib/route-id";
 
 export const metadata: Metadata = { title: "Peña" };
 
+/** Configured public origin, else the request host (behind a proxy the forwarded headers win). */
+async function requestOrigin(): Promise<string> {
+  const configured = appOrigin();
+  if (configured) return configured;
+  const h = await headers();
+  const host = h.get("x-forwarded-host") ?? h.get("host") ?? "localhost:3000";
+  const proto = h.get("x-forwarded-proto") ?? (host.startsWith("localhost") ? "http" : "https");
+  return `${proto}://${host}`;
+}
+
 export default async function Page({ params }: { params: Promise<{ groupId: string }> }) {
   const user = await requireUser();
   const { groupId } = await params;
   if (!isRouteId(groupId)) notFound();
   const group = await loadGroup(groupId);
+  const url = inviteUrl(await requestOrigin(), group.joinCode);
   return (
     <PageContainer eyebrow="Peña" title={group.name} description={group.description ?? undefined} className="[&_h1]:break-words" sticker={<Sticker src={football} width={88} tilt={-8} className="absolute -right-3 -top-12" />}>
       <AutoRefresh />
@@ -35,7 +48,7 @@ export default async function Page({ params }: { params: Promise<{ groupId: stri
           {group.memberCount} {group.memberCount === 1 ? "miembro" : "miembros"}
         </span>
       </div>
-      <JoinCodeTicket code={group.joinCode} groupName={group.name} memberCount={group.memberCount} maxMembers={group.maxMembers} />
+      <JoinCodeTicket code={group.joinCode} inviteUrl={url} groupName={group.name} memberCount={group.memberCount} maxMembers={group.maxMembers} />
       <section aria-labelledby="porra-heading" className="grid gap-3">
         <SectionBar index="01" title="Porra de la jornada" headingId="porra-heading" />
         <GroupPorraEntry group={group} />

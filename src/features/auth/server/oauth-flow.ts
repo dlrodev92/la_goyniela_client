@@ -8,6 +8,7 @@ import { codeChallengeS256, decodeTransient, encodeTransient, generateCodeVerifi
 import { createOAuthProvider } from "../infrastructure/oauth/providers";
 import { apiBaseUrl } from "./config";
 import { providerCredentials, redirectUri } from "./oauth-config";
+import { consumePostAuthPath } from "./post-auth";
 import { setSessionCookie } from "./session";
 
 /** Outcome of a flow step: an absolute URL (provider) or an app-relative path. */
@@ -58,5 +59,5 @@ export async function completeOAuth(provider: OAuthProviderId, params: URLSearch
     if (error instanceof ServiceError && error.code === "provider-down") return toLogin(loginErrorFor(provider, "provider-down"));
     return toLogin(loginErrorFor(provider, "other"));
   }
-  return { to: "/dashboard", external: false };
+  return { to: await consumePostAuthPath(), external: false };
 }
