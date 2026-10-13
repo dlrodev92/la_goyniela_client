@@ -1,8 +1,9 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import localFont from "next/font/local";
 import type { ReactNode } from "react";
 
 import { NavProgress } from "@/components/shell/nav-progress";
+import { SITE_DESCRIPTION, SITE_NAME, siteUrl } from "@/lib/site";
 
 import "./globals.css";
 
@@ -23,13 +24,37 @@ const nippo = localFont({
   adjustFontFallback: "Arial",
 });
 
+// Icons, the Open Graph card and the manifest come from the file conventions in this folder (icon.png, apple-icon.png,
+// opengraph-image.png, twitter-image.png, manifest.ts).
 export const metadata: Metadata = {
+  metadataBase: new URL(siteUrl()),
   title: {
-    default: "La Goyniela",
-    template: "%s | La Goyniela",
+    default: `${SITE_NAME} · La quiniela de tu peña`,
+    template: `%s | ${SITE_NAME}`,
   },
-  description: "La quiniela de tu peña: cada uno vota su 1X2 y el grupo forma una quiniela común.",
-  icons: { icon: "/logo.png" },
+  description: SITE_DESCRIPTION,
+  applicationName: SITE_NAME,
+  keywords: ["quiniela", "peña", "quiniela con amigos", "1X2", "pleno al 15", "LaLiga", "pronósticos", "porra"],
+  openGraph: {
+    type: "website",
+    locale: "es_ES",
+    siteName: SITE_NAME,
+    title: `${SITE_NAME} · La quiniela de tu peña`,
+    description: SITE_DESCRIPTION,
+    url: "/",
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: `${SITE_NAME} · La quiniela de tu peña`,
+    description: SITE_DESCRIPTION,
+  },
+  appleWebApp: { capable: true, title: SITE_NAME, statusBarStyle: "black-translucent" },
+  formatDetection: { telephone: false },
+};
+
+export const viewport: Viewport = {
+  themeColor: "#002600",
+  colorScheme: "dark light",
 };
 
 export default function RootLayout({ children }: Readonly<{ children: ReactNode }>) {

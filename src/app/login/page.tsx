@@ -11,7 +11,7 @@ import { getOptionalUser } from "@/features/auth/server/session";
 import { trims } from "@/components/ui/sticker";
 import vote from "../../../public/vote_image.png";
 
-export const metadata: Metadata = { title: "Iniciar sesión" };
+export const metadata: Metadata = { title: "Iniciar sesión", alternates: { canonical: "/login" } };
 
 export default async function LoginPage({ searchParams }: { searchParams: Promise<{ error?: string | string[] }> }) {
   // Stale or inactive sessions resolve to null (no redirect), so an old cookie can never loop back here.

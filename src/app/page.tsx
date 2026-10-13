@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import { PageContainer } from "@/components/shell/page-container";
 import { PublicShell } from "@/components/shell/public-shell";
 import { Button } from "@/components/ui/button";
@@ -7,6 +8,8 @@ import { getOptionalUser } from "@/features/auth/server/session";
 import logo from "../../public/logo.png";
 import scarf from "../../public/asset_scarf.png";
 import ticket from "../../public/asset_ticket.png";
+
+export const metadata: Metadata = { alternates: { canonical: "/" } };
 
 // Interim public home. A full landing page will replace this content later.
 export default async function HomePage() {
