@@ -8,7 +8,7 @@ import { STANDINGS, STANDINGS_MAX_WIDTH, standingsFrameView, type StandingsEmbed
 /** If the iframe never reports `load` within this time, a quiet fallback link replaces the loader. */
 const LOAD_TIMEOUT_MS = 12000;
 
-/** "Clasificaciones" of the Spanish leagues: one Sofascore widget per tab, mounted client-side for the active tab only. */
+/** "Clasificaciones" of the Spanish leagues and the UEFA competitions: one Sofascore widget per tab, mounted client-side for the active tab only. */
 export function StandingsSection() {
   const baseId = useId();
   const [activeId, setActiveId] = useState<StandingsEmbed["id"]>(STANDINGS[0].id);
@@ -31,42 +31,45 @@ export function StandingsSection() {
   return (
     <Card as="section" surface={1} aria-labelledby={`${baseId}-heading`} header={<h2 id={`${baseId}-heading`}>Clasificaciones</h2>}>
       <div className="grid gap-4">
-        <div role="tablist" aria-label="Competición" className="grid grid-cols-3 gap-1 rounded-control bg-surface-2 p-1">
-          {STANDINGS.map((embed, index) => {
-            const selected = embed.id === activeId;
-            return (
-              <button
-                key={embed.id}
-                ref={node => { tabRefs.current[index] = node; }}
-                type="button"
-                role="tab"
-                id={`${baseId}-tab-${embed.id}`}
-                aria-selected={selected}
-                aria-controls={`${baseId}-panel`}
-                tabIndex={selected ? 0 : -1}
-                onClick={() => setActiveId(embed.id)}
-                onKeyDown={event => onKeyDown(event, index)}
-                className={cn(
-                  "tap min-h-11 rounded-control px-2 text-label font-bold",
-                  selected ? "bg-action text-surface-1" : "text-fg-muted hover:text-fg",
-                )}
-              >
-                {embed.tabLabel}
-              </button>
-            );
-          })}
-        </div>
+        {/* Folder tabs: each one overlaps its neighbour, the active one comes to the front and joins the sheet below. */}
+        <div className="mx-auto grid w-full" style={{ maxWidth: STANDINGS_MAX_WIDTH }}>
+          <div role="tablist" aria-label="Competición" className="-mb-[2px] flex overflow-x-auto overscroll-x-contain pt-2 [scrollbar-width:none]">
+            {STANDINGS.map((embed, index) => {
+              const selected = embed.id === activeId;
+              return (
+                <button
+                  key={embed.id}
+                  ref={node => { tabRefs.current[index] = node; }}
+                  type="button"
+                  role="tab"
+                  id={`${baseId}-tab-${embed.id}`}
+                  aria-selected={selected}
+                  aria-controls={`${baseId}-panel`}
+                  tabIndex={selected ? 0 : -1}
+                  onClick={() => setActiveId(embed.id)}
+                  onKeyDown={event => onKeyDown(event, index)}
+                  style={{ zIndex: selected ? 30 : STANDINGS.length - index }}
+                  className={cn(
+                    "tap relative min-h-11 shrink-0 whitespace-nowrap rounded-t-card border-2 border-b-0 border-ink px-4 text-label font-bold transition-transform duration-(--duration-fast) ease-(--ease-standard) [--press-scale:1]",
+                    index > 0 && "-ml-3",
+                    selected ? "-translate-y-1 bg-surface-2 text-fg" : "translate-y-0 bg-surface-1 text-fg-muted shadow-[inset_0_-6px_8px_-6px_rgb(0_0_0/0.25)] hover-fine:-translate-y-0.5 hover-fine:text-fg",
+                  )}
+                >
+                  {embed.tabLabel}
+                </button>
+              );
+            })}
+          </div>
 
-        <div role="tabpanel" id={`${baseId}-panel`} aria-labelledby={`${baseId}-tab-${active.id}`} className="grid gap-2">
-          <div className="mx-auto w-full overflow-hidden rounded-card border border-border-soft bg-surface-2" style={{ maxWidth: STANDINGS_MAX_WIDTH }}>
+          <div role="tabpanel" id={`${baseId}-panel`} aria-labelledby={`${baseId}-tab-${active.id}`} className="relative z-[20] overflow-hidden rounded-card rounded-tl-none border-2 border-ink bg-surface-2">
             <p className="border-b border-border-soft px-4 py-3 font-display text-label uppercase">{active.name}</p>
             <StandingsFrame key={active.id} embed={active} />
           </div>
-          <p className="text-center text-meta text-fg-muted">
-            Standings provided by{" "}
-            <a href={active.attributionUrl} target="_blank" rel="noopener noreferrer" className="underline underline-offset-2 hover:text-fg">Sofascore</a>
-          </p>
         </div>
+        <p className="text-center text-meta text-fg-muted">
+          Standings provided by{" "}
+          <a href={active.attributionUrl} target="_blank" rel="noopener noreferrer" className="underline underline-offset-2 hover:text-fg">Sofascore</a>
+        </p>
       </div>
     </Card>
   );

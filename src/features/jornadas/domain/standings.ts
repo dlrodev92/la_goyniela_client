@@ -1,6 +1,6 @@
-/** Sofascore standings widgets embedded in the jornada detail. The srcs are fixed by the widget provider. */
+/** Sofascore standings widgets embedded in the jornada detail (Spanish leagues and UEFA league phases). The srcs are fixed by the widget provider. */
 export type StandingsEmbed = {
-  id: "laliga" | "liga-f" | "laliga-2";
+  id: "laliga" | "liga-f" | "laliga-2" | "champions" | "europa" | "conference";
   /** Short label for the tab. */
   tabLabel: string;
   /** Competition name shown in the frame header. */
@@ -38,6 +38,30 @@ export const STANDINGS: readonly StandingsEmbed[] = [
     src: "https://widgets.sofascore.com/en/embed/tournament/37/season/97280/standings/LaLiga%202%2026%2F27?widgetTitle=LaLiga%202%2026%2F27&showCompetitionLogo=true",
     height: 1203,
     attributionUrl: "https://www.sofascore.com/football/tournament/spain/laliga-2/54#id:97280",
+  },
+  {
+    id: "champions",
+    tabLabel: "Champions",
+    name: "UEFA Champions League 26/27",
+    src: "https://widgets.sofascore.com/en/embed/tournament/138314/season/96518/standings/UEFA%20Champions%20League%2026%2F27?widgetTitle=UEFA%20Champions%20League%2026%2F27&showCompetitionLogo=true",
+    height: 1763,
+    attributionUrl: "https://www.sofascore.com/football/tournament/europe/uefa-champions-league/7#id:96518",
+  },
+  {
+    id: "europa",
+    tabLabel: "Europa League",
+    name: "UEFA Europa League 26/27",
+    src: "https://widgets.sofascore.com/en/embed/tournament/138315/season/96522/standings/UEFA%20Europa%20League%2026%2F27?widgetTitle=UEFA%20Europa%20League%2026%2F27&showCompetitionLogo=true",
+    height: 1763,
+    attributionUrl: "https://www.sofascore.com/football/tournament/europe/uefa-europa-league/679#id:96522",
+  },
+  {
+    id: "conference",
+    tabLabel: "Conference",
+    name: "UEFA Conference League 26/27",
+    src: "https://widgets.sofascore.com/en/embed/tournament/138316/season/96529/standings/UEFA%20Conference%20League%2026%2F27?widgetTitle=UEFA%20Conference%20League%2026%2F27&showCompetitionLogo=true",
+    height: 1763,
+    attributionUrl: "https://www.sofascore.com/football/tournament/europe/uefa-conference-league/17015#id:96529",
   },
 ];
 

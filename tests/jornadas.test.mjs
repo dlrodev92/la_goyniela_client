@@ -106,9 +106,9 @@ test("money strings in Spanish and plain forms are normalized", () => {
   assert.equal(formatEuro("x"), null);
 });
 
-test("standings config has three unique entries served from https Sofascore widgets", () => {
-  assert.equal(STANDINGS.length, 3);
-  assert.equal(new Set(STANDINGS.map(embed => embed.id)).size, 3);
+test("standings config has six unique entries served from https Sofascore widgets", () => {
+  assert.equal(STANDINGS.length, 6);
+  assert.equal(new Set(STANDINGS.map(embed => embed.id)).size, 6);
   for (const embed of STANDINGS) {
     const src = new URL(embed.src);
     assert.equal(src.protocol, "https:");
