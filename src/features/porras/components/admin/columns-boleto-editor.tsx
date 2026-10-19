@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { StatusMessage } from "@/components/ui/status-message";
 import { formatEuro } from "@/lib/format-money";
 import { Boleto, type BoletoFixture, type BoletoProposal } from "../boleto";
-import { checkColumns, copyPreviousColumn, fijosOf, fitColumns, setColumnSign, type ColumnsDraft } from "../../domain/columns";
+import { checkColumns, copyPreviousColumn, fijosOf, fijosSentence, fitColumns, setColumnSign, type ColumnsDraft } from "../../domain/columns";
 import { type FieldErrors, type PorraTerms } from "../../domain/logic";
 import { columnasText } from "../../domain/modes";
 import type { Sign } from "../../domain/porras";
@@ -36,7 +36,7 @@ const money = (value: string | null) => (value === null ? "" : formatEuro(value,
  * match in each). In Intuición the fijos are edited once and mirrored.
  */
 export function ColumnsBoletoEditor({ groupId, porraId, jornada, temporada, fixtures, initialDraft, source, proposalDraft, proposal, terms }: Props) {
-  const fijos = fijosOf({ modo: terms.modo, fijos: terms.fijos ?? 0 });
+  const fijos = fijosOf({ modo: terms.modo, fijos: terms.fijos });
   const [draft, setDraft] = useState(() => fitColumns(initialDraft, terms.columnas, fijos));
   const [savedDraft, setSavedDraft] = useState<ColumnsDraft | null>(null);
   const [result, setResult] = useState<ConfirmBoletoState | null>(null);
@@ -72,7 +72,7 @@ export function ColumnsBoletoEditor({ groupId, porraId, jornada, temporada, fixt
         <p className="font-display text-h2 uppercase tabular-nums">Formato: {columnasText(terms.columnas)} · {money(terms.costEur ?? check.costEur)}</p>
         <p className="text-label text-fg-muted">
           {intuicion
-            ? `Los primeros ${fijos} ${fijos === 1 ? "partido es fijo" : "partidos son fijos"}: se marcan una vez y valen para todas las columnas. Los otros ${14 - fijos} cambian de una columna a otra.`
+            ? `${fijosSentence(fijos)}: se marcan una vez y valen para todas las columnas. Los otros ${14 - fijos.length} cambian de una columna a otra.`
             : "Cada columna lleva un solo signo por partido y es independiente de las demás."}
         </p>
       </div>

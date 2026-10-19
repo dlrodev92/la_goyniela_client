@@ -230,7 +230,8 @@ test("porra view helpers", () => {
   assert.equal(V.porraFormatLabel({ ...base, modo: "multiple", dobles: 2 }), "Múltiple · 2 dobles");
   assert.equal(V.porraFormatLabel({ ...base, modo: "sencilla", columnas: 6 }), "Sencilla · 6 columnas");
   assert.equal(V.porraFormatLabel({ ...base, modo: "reducida", dobles: 3, triples: 3 }), "Reducida R3 · 3 dobles + 3 triples", "the code is derived from (dobles, triples) when the API omits it");
-  assert.equal(V.porraFormatLabel({ ...base, modo: "intuicion", fijos: 10, columnas: 6 }), "Intuición · 10 fijos y 4 variables");
+  assert.equal(V.porraFormatLabel({ ...base, modo: "intuicion", fijos: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10], columnas: 6 }), "Intuición · 10 fijos y 4 variables");
+  assert.equal(V.porraFormatLabel({ ...base, modo: "intuicion", fijos: [2, 6, 13], columnas: 3 }), "Intuición · 3 fijos y 11 variables");
   assert.equal(L.formatName(0, 0), "solo simples");
   const active = { status: "active", saleOpensAt: null, votingClosesAt: "2026-10-10T10:00:00Z", effectivePhase: null, serverNow: "2026-10-06T10:00:00Z" };
   assert.deepEqual(V.votingGate({ status: "open" }, active, true), { open: true, reason: null });

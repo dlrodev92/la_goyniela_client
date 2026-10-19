@@ -10,9 +10,9 @@ import { cn } from "@/lib/cn";
 import { formatEuro } from "@/lib/format-money";
 import { formatName, formatOptionLabel, type FormatOption } from "../../domain/logic";
 import {
-  columnasText, intuicionOptionLabel, MODE_BLURB, MODE_LABEL, PORRA_MODES, reduccionOptions, sameSpec, sencillaOptions, specKey,
+  columnasText, firstFijos, intuicionOptionLabel, MAX_FIJOS, MODE_BLURB, MODE_LABEL, PORRA_MODES, reduccionOptions, sameSpec, sencillaOptions, specKey,
 } from "../../domain/modes";
-import { FALLBACK_PRECIO_APUESTA_EUR, type IntuicionOption, type PorraModo, type PorraSpec } from "../../domain/porras";
+import { FALLBACK_PRECIO_APUESTA_EUR, MATCH_COUNT, type IntuicionOption, type PorraModo, type PorraSpec } from "../../domain/porras";
 import { loadOptionsAction, type OptionsState } from "../../server/actions";
 
 /** What the admin picked: the budget, the mode with its parameters, and the apuestas and cost the options list showed. */
@@ -44,6 +44,7 @@ const currentTag = <span className="ml-2 rounded-pill bg-surface-3 px-2 py-0.5 a
  * Budget input with quick chips, then the mode (Múltiple, Sencilla, Reducida, Intuición) and the options of that mode
  * that fit the budget. Múltiple and Intuición options come from the API; sencilla and reducida are priced at the
  * jornada's price the API implies. Columns and cost shown are display only: the API computes the real ones.
+ * An Intuición option starts with its first N partidos fijos; the admin can then pick any set (at least one variable).
  */
 export function ModeChooser({ groupId, jornadaId, initialBudget = "", current, onSelect, headings }: Props) {
   const uid = useId();
@@ -51,11 +52,12 @@ export function ModeChooser({ groupId, jornadaId, initialBudget = "", current, o
   const [result, setResult] = useState<OptionsState | null>(null);
   const [modo, setModo] = useState<PorraModo>(current?.modo ?? "multiple");
   const [selected, setSelected] = useState<string | null>(null);
+  const [intuicion, setIntuicion] = useState<{ option: IntuicionOption; fijos: number[] } | null>(null);
   const [pending, startTransition] = useTransition();
   const perColumn = result?.status === "ok" ? result.pricePerColumn : null;
   const price = perColumn ?? FALLBACK_PRECIO_APUESTA_EUR;
 
-  const reset = () => { setSelected(null); onSelect(null); };
+  const reset = () => { setSelected(null); setIntuicion(null); onSelect(null); };
 
   const load = (text: string) => {
     reset();
@@ -83,6 +85,24 @@ export function ModeChooser({ groupId, jornadaId, initialBudget = "", current, o
     if (result?.status !== "ok") return;
     setSelected(specKey(spec));
     onSelect({ budgetEur: result.budgetEur, spec, columns, costEur });
+  };
+
+  const intuicionSpec = (option: IntuicionOption, fijos: number[]): PorraSpec => ({ modo: "intuicion", fijos, columnas: option.columnas });
+
+  const chooseIntuicion = (option: IntuicionOption) => {
+    const fijos = firstFijos(option.fijos);
+    choose(intuicionSpec(option, fijos), option.columnas, option.costEur);
+    setIntuicion({ option, fijos });
+  };
+
+  /** Flips one partido between fijo and variable, keeping the option (columns and cost) the admin chose. */
+  const toggleFijo = (position: number) => {
+    if (!intuicion || result?.status !== "ok") return;
+    const { option, fijos } = intuicion;
+    const next = fijos.includes(position) ? fijos.filter(item => item !== position) : [...fijos, position].sort((a, b) => a - b);
+    if (next.length > MAX_FIJOS) return;
+    setIntuicion({ option, fijos: next });
+    onSelect({ budgetEur: result.budgetEur, spec: intuicionSpec(option, next), columns: option.columnas, costEur: option.costEur });
   };
 
   const radio = (spec: PorraSpec, index: number, content: ReactNode, apply: () => void, disabled = false) => {
@@ -118,7 +138,7 @@ export function ModeChooser({ groupId, jornadaId, initialBudget = "", current, o
         ));
     }
     return data.intuicion.map((option: IntuicionOption, index) =>
-      radio({ modo, fijos: option.fijos, columnas: option.columnas }, index, intuicionOptionLabel(option), () => choose({ modo, fijos: option.fijos, columnas: option.columnas }, option.columnas, option.costEur)));
+      radio(intuicionSpec(option, firstFijos(option.fijos)), index, intuicionOptionLabel(option), () => chooseIntuicion(option)));
   };
 
   const list = result?.status === "ok" ? options(result) : [];
@@ -187,6 +207,35 @@ export function ModeChooser({ groupId, jornadaId, initialBudget = "", current, o
                 {modo === "sencilla" ? "¿Cuántas columnas?" : modo === "reducida" ? "Elige una reducción" : `Elige una opción (${list.length})`}
               </legend>
               {list}
+            </fieldset>
+          )}
+          {modo === "intuicion" && intuicion && selected !== null && (
+            <fieldset className="grid gap-2">
+              <legend className="mb-1 text-label font-bold">¿Qué partidos son fijos?</legend>
+              <p className="text-label text-fg-muted">
+                Los fijos llevan el mismo signo en todas las columnas. Pulsa un partido para cambiarlo; al menos uno tiene que variar.
+              </p>
+              <div role="group" aria-label="Partidos fijos" className="grid grid-cols-7 gap-1">
+                {Array.from({ length: MATCH_COUNT }, (_, index) => index + 1).map(position => {
+                  const fijo = intuicion.fijos.includes(position);
+                  const blocked = !fijo && intuicion.fijos.length >= MAX_FIJOS;
+                  return (
+                    <button
+                      key={position} type="button" aria-pressed={fijo} disabled={blocked} onClick={() => toggleFijo(position)}
+                      aria-label={`Partido ${position}: ${fijo ? "fijo" : "variable"}`}
+                      className={cn(
+                        "tap flex min-h-touch items-center justify-center rounded-control border-2 font-display text-h2 leading-none tabular-nums disabled:cursor-not-allowed disabled:opacity-50",
+                        fijo ? "border-edge bg-action text-on-action" : "border-border-soft bg-surface-1 hover-fine:border-action",
+                      )}
+                    >
+                      {position}
+                    </button>
+                  );
+                })}
+              </div>
+              <p className="text-label font-bold tabular-nums" aria-live="polite">
+                {intuicion.fijos.length} {intuicion.fijos.length === 1 ? "fijo" : "fijos"} · {MATCH_COUNT - intuicion.fijos.length} {MATCH_COUNT - intuicion.fijos.length === 1 ? "variable" : "variables"}
+              </p>
             </fieldset>
           )}
         </div>

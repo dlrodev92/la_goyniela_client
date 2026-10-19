@@ -55,8 +55,8 @@ export type Porra = {
   modo: PorraModo;
   dobles: number;
   triples: number;
-  /** Intuición only: partidos 1..fijos carry the same sign in every column. Null in the other modes. */
-  fijos: number | null;
+  /** Intuición only: the partidos (1-based, ascending) that carry the same sign in every column. Null in the other modes. */
+  fijos: number[] | null;
   /** Sencilla and Intuición only: how many columns the boleto plays. Null in the other modes. */
   columnas: number | null;
   /** Reducida only: the official reduction. The API may omit it; the gateway then derives it from (dobles, triples). */
@@ -110,8 +110,8 @@ export type PropuestaColumn = { index: number; matches: PropuestaMatch[] };
 export type Propuesta = {
   porraId: string;
   modo: PorraModo;
-  /** Intuición only: partidos 1..fijos are already locked to one sign across the columns. */
-  fijos: number | null;
+  /** Intuición only: the partidos (1-based, ascending) already locked to one sign across the columns. */
+  fijos: number[] | null;
   /** Apuestas the boleto plays and their cost, as the API computed them. */
   columns: number;
   costEur: Money;
@@ -152,7 +152,7 @@ export type PorraSpec =
   | { modo: "multiple"; dobles: number; triples: number }
   | { modo: "sencilla"; columnas: number }
   | { modo: "reducida"; reduccion: ReduccionCode }
-  | { modo: "intuicion"; fijos: number; columnas: number };
+  | { modo: "intuicion"; fijos: number[]; columnas: number };
 
 /** The price is never sent: the backend resolves it from the jornada's Losilla data and returns it as `precioApuestaEur`. */
 export type NewPorra = { jornadaId: string; budgetEur: Money; spec: PorraSpec };

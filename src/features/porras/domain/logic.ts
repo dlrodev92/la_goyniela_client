@@ -343,7 +343,7 @@ export type PorraTerms = {
   budgetEur: Money;
   precioApuestaEur: Money;
   modo?: PorraModo;
-  fijos?: number | null;
+  fijos?: number[] | null;
   columnas?: number | null;
   columns?: number;
   costEur?: Money;
