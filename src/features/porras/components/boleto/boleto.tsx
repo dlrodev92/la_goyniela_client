@@ -350,10 +350,15 @@ export function Boleto(props: BoletoProps) {
                     </div>
                   )}
                 </div>
-                {showMeta && (!onSign || fx.position <= lockedRows || proposal?.weights[fx.position]) && (
+                {showMeta && !onSign && (
                   <div className="flex items-start justify-between gap-2 pb-1 pt-1">
-                    {onSign ? (fx.position <= lockedRows ? <FixedTag /> : <span />) : <KindTag signs={signs} />}
+                    <KindTag signs={signs} />
                     {proposal?.weights[fx.position] && <ShareBars weights={proposal.weights[fx.position]} chosen={signs} />}
+                  </div>
+                )}
+                {onSign && fx.position <= lockedRows && (
+                  <div className="flex justify-end pb-1">
+                    <FixedTag />
                   </div>
                 )}
                 <Reveal live={false}>{error && <p id={errorId} role="alert" className="px-2 pb-1 pt-0.5 text-meta font-bold text-[#8a2410]">{error}</p>}</Reveal>
