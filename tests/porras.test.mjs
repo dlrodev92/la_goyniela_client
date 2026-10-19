@@ -122,8 +122,8 @@ test("myPicks and getBoleto turn 404 into null", async () => {
 
 test("myPicks maps rows and the pleno", async () => {
   const rows = [
-    { partido_orden: 1, signs: ["X", "1"], pleno_local: null, pleno_visitante: null, local_team_id: 1, visitante_team_id: 2, local_team: { canonical_name: "Barcelona", short_name: "Barça", logo_url: "https://x.test/a.png" }, visitante_team: null },
-    { partido_orden: 15, signs: null, pleno_local: "2", pleno_visitante: "M", local_team_id: 1, visitante_team_id: 2 },
+    { partido_orden: 1, signs: ["X", "1"], pleno_local: null, pleno_visitante: null, local_team_id: 1, visitante_team_id: 2, columna_idx: 1, local_team: { canonical_name: "Barcelona", short_name: "Barça", logo_url: "https://x.test/a.png" }, visitante_team: null },
+    { partido_orden: 15, signs: null, pleno_local: "2", pleno_visitante: "M", local_team_id: 1, visitante_team_id: 2, columna_idx: 1 },
   ];
   const sheet = await gw(async () => json(rows)).myPicks("2", "5");
   assert.deepEqual(sheet.picks, [{ position: 1, signs: ["1", "X"] }]);

@@ -41,8 +41,8 @@ const porraDetailSchema = porraSchema.extend({
 });
 const pickOutSchema = z.object({
   partido_orden: z.number().int().min(1).max(15),
-  /** The API does not send it yet (a member who voted N columns gets N rows per partido): used when present, see `toSheet`. */
-  columna_idx: z.number().int().min(1).nullish(),
+  /** 1-indexed column this pick belongs to (backend guarantee post multi-column sprint). Required. */
+  columna_idx: z.number().int().min(1),
   signs: z.array(sign).nullable().optional(),
   pleno_local: goals.nullable().optional(),
   pleno_visitante: goals.nullable().optional(),
@@ -105,28 +105,26 @@ function toTeam(team: z.infer<typeof teamRefSchema> | null | undefined): TeamRef
   return name ? { name, shortName: shortNameOf(team), logoUrl: logoUrlOf(team) } : null;
 }
 /**
- * Rows of one member -> the sheet. With `columna_idx` the rows are grouped by it. The API does not send it yet, so a member
- * who voted N columns comes back as N rows per partido_orden (and the pleno repeated): that fallback assigns the 1st
- * occurrence of every partido to column 1, the 2nd to column 2, and so on (rows keep the API's order), and keeps one pleno.
- * Replace the fallback as soon as `PickOut` carries `columna_idx`.
+ * Rows of one member -> the sheet. `columna_idx` (a stable backend guarantee) groups rows by column; the
+ * pleno appears once per column with the same value and we keep only the first non-empty one.
  */
 function toSheet(rows: z.infer<typeof pickOutSchema>[]): PicksSheet {
   const byColumn = new Map<number, Pick[]>();
-  const seen = new Map<number, number>();
   let pleno: Pleno | null = null;
   const matches = new Map<number, MatchTeams>();
-  const hasIndex = rows.some(row => row.columna_idx != null);
-  for (const row of [...rows].sort((a, b) => a.partido_orden - b.partido_orden)) {
+  for (const row of [...rows].sort(
+    (a, b) => a.columna_idx - b.columna_idx || a.partido_orden - b.partido_orden,
+  )) {
     if (!matches.has(row.partido_orden)) matches.set(row.partido_orden, { position: row.partido_orden, home: toTeam(row.local_team), away: toTeam(row.visitante_team) });
     if (row.partido_orden === 15) {
       if (!pleno && row.pleno_local && row.pleno_visitante) pleno = { home: row.pleno_local, away: row.pleno_visitante };
       continue;
     }
     if (!row.signs || row.signs.length === 0) continue;
-    const occurrence = (seen.get(row.partido_orden) ?? 0) + 1;
-    seen.set(row.partido_orden, occurrence);
-    const column = hasIndex ? row.columna_idx ?? 1 : occurrence;
-    byColumn.set(column, [...(byColumn.get(column) ?? []), { position: row.partido_orden, signs: sortSigns(row.signs) }]);
+    byColumn.set(row.columna_idx, [
+      ...(byColumn.get(row.columna_idx) ?? []),
+      { position: row.partido_orden, signs: sortSigns(row.signs) },
+    ]);
   }
   const columnas = [...byColumn.entries()].sort(([a], [b]) => a - b).map(([, picks]) => picks);
   return { picks: columnas[0] ?? [], columnas, pleno, matches: [...matches.values()] };
