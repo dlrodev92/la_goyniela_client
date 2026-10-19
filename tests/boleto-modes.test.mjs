@@ -495,8 +495,8 @@ test("the pick 422s read as clear Spanish copy and flag the rows under columnas"
 
 // ---- Reading the picks: N columns ----
 
-const pickRow = (order, signs, extra = {}) => ({ partido_orden: order, signs, pleno_local: null, pleno_visitante: null, local_team_id: 1, visitante_team_id: 2, ...extra });
-const plenoRow = (extra = {}) => ({ partido_orden: 15, signs: null, pleno_local: "2", pleno_visitante: "M", local_team_id: 1, visitante_team_id: 2, ...extra });
+const pickRow = (order, signs, extra = {}) => ({ partido_orden: order, signs, pleno_local: null, pleno_visitante: null, local_team_id: 1, visitante_team_id: 2, columna_idx: 1, ...extra });
+const plenoRow = (extra = {}) => ({ partido_orden: 15, signs: null, pleno_local: "2", pleno_visitante: "M", local_team_id: 1, visitante_team_id: 2, columna_idx: 1, ...extra });
 
 test("picks with columna_idx are grouped by it", async () => {
   const rows = [
@@ -511,22 +511,13 @@ test("picks with columna_idx are grouped by it", async () => {
   assert.deepEqual(sheet.pleno, { home: "2", away: "M" });
 });
 
-test("picks without columna_idx: duplicate partidos fall back to order of appearance, and the pleno is deduplicated", async () => {
-  // The API repeats every partido once per column and does not say which column a row belongs to (yet).
+test("rows without columna_idx are rejected as malformed", async () => {
+  // The backend MUST send columna_idx on every pick (multi-column contract); silent fallbacks are a bug,
+  // not a feature. The client fails loud and surfaces a `malformed` ServiceError.
   const rows = [
-    pickRow(1, ["1"]), pickRow(1, ["X"]), pickRow(1, ["2"]), pickRow(2, ["2"]), pickRow(2, ["2"]), pickRow(2, ["1"]),
-    plenoRow(), plenoRow(), plenoRow(),
+    { partido_orden: 1, signs: ["1"], pleno_local: null, pleno_visitante: null, local_team_id: 1, visitante_team_id: 2 },
   ];
-  const sheet = await gw(async () => json(rows)).myPicks("2", "5");
-  assert.equal(sheet.columnas.length, 3);
-  assert.deepEqual(sheet.columnas.map(column => column[0].signs), [["1"], ["X"], ["2"]], "1st occurrence is column 1, and so on");
-  assert.deepEqual(sheet.columnas.map(column => column[1].signs), [["2"], ["2"], ["1"]]);
-  assert.deepEqual(sheet.pleno, { home: "2", away: "M" });
-  assert.equal(sheet.matches.length, 3, "one team entry per partido, not per row");
-  // A single-column vote is still one column.
-  const single = await gw(async () => json([pickRow(1, ["X", "1"]), pickRow(2, ["2"]), plenoRow()])).myPicks("2", "5");
-  assert.equal(single.columnas.length, 1);
-  assert.deepEqual(single.picks, [{ position: 1, signs: ["1", "X"] }, { position: 2, signs: ["2"] }]);
+  await rejectsCode(gw(async () => json(rows)).myPicks("2", "5"), "malformed");
 });
 
 test("the admin's members view carries every column of each member", async () => {
