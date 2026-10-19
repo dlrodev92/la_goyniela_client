@@ -53,13 +53,16 @@ export function isColumnsDraft(value: unknown): value is ColumnsDraft {
   return (home === null || GOALS.includes(home as Goals)) && (away === null || GOALS.includes(away as Goals));
 }
 
-/** How many partidos (from match 1) are locked to one sign across all columns. Zero outside Intuición. */
-export const fijosOf = (spec: Pick<PorraSpec, "modo"> & { fijos?: number }): number => (spec.modo === "intuicion" ? spec.fijos ?? 0 : 0);
+/** The partidos (1-based) locked to one sign across all columns. None outside Intuición. */
+export const fijosOf = (spec: Pick<PorraSpec, "modo"> & { fijos?: readonly number[] | null }): number[] => (spec.modo === "intuicion" ? [...(spec.fijos ?? [])] : []);
+
+/** True when match `row` (0-based) is one of the fijos. */
+const isFijoRow = (fijos: readonly number[], row: number): boolean => fijos.includes(row + 1);
 
 /** Marks exactly `sign` on match `position` of column `index`. A fijo (Intuición) is mirrored to every column. */
-export function setColumnSign(draft: ColumnsDraft, index: number, position: number, sign: Sign, fijos = 0): ColumnsDraft {
+export function setColumnSign(draft: ColumnsDraft, index: number, position: number, sign: Sign, fijos: readonly number[] = []): ColumnsDraft {
   if (position < 1 || position > MATCH_COUNT || index < 0 || index >= draft.columns.length) return draft;
-  const locked = position <= fijos;
+  const locked = fijos.includes(position);
   return {
     ...draft,
     columns: draft.columns.map((rows, column) => (
@@ -73,21 +76,21 @@ export function setColumnsPleno(draft: ColumnsDraft, team: "home" | "away", valu
 }
 
 /** Copies the variable rows of the previous column into column `index`. The fijos already match in every column. */
-export function copyPreviousColumn(draft: ColumnsDraft, index: number, fijos = 0): ColumnsDraft {
+export function copyPreviousColumn(draft: ColumnsDraft, index: number, fijos: readonly number[] = []): ColumnsDraft {
   if (index < 1 || index >= draft.columns.length) return draft;
   const previous = draft.columns[index - 1];
   return {
     ...draft,
-    columns: draft.columns.map((rows, column) => (column === index ? rows.map((signs, row) => (row < fijos ? signs : [...previous[row]])) : rows)),
+    columns: draft.columns.map((rows, column) => (column === index ? rows.map((signs, row) => (isFijoRow(fijos, row) ? signs : [...previous[row]])) : rows)),
   };
 }
 
 /** Same number of columns as the porra plays: extra ones are dropped, missing ones start from a copy of the first. Fijos are mirrored from column 1. */
-export function fitColumns(draft: ColumnsDraft, count: number, fijos = 0): ColumnsDraft {
+export function fitColumns(draft: ColumnsDraft, count: number, fijos: readonly number[] = []): ColumnsDraft {
   const columns = draft.columns.slice(0, count).map(rows => rows.map(signs => [...signs]));
-  while (columns.length < count) columns.push((columns[0] ?? emptyColumn()).map((signs, row) => (row < fijos ? [...signs] : [])));
+  while (columns.length < count) columns.push((columns[0] ?? emptyColumn()).map((signs, row) => (isFijoRow(fijos, row) ? [...signs] : [])));
   const first = columns[0];
-  return { ...draft, columns: columns.map(rows => rows.map((signs, row) => (row < fijos && first ? [...first[row]] : signs))) };
+  return { ...draft, columns: columns.map(rows => rows.map((signs, row) => (isFijoRow(fijos, row) && first ? [...first[row]] : signs))) };
 }
 
 // ---- Validation per mode ----
@@ -95,7 +98,7 @@ export function fitColumns(draft: ColumnsDraft, count: number, fijos = 0): Colum
 export type ColumnsTerms = {
   modo: PorraModo;
   columnas?: number | null;
-  fijos?: number | null;
+  fijos?: readonly number[] | null;
   budgetEur: Money;
   precioApuestaEur: Money;
   /** The porra's apuestas as the API computed them; without it the planned number of columns stands in. */
@@ -124,7 +127,7 @@ const joinNumbers = (values: readonly number[]): string =>
 /** Live check of an N-column boleto (sencilla, Intuición) against the porra: the counts, one sign per match, fijos and budget. */
 export function checkColumns(draft: ColumnsDraft, terms: ColumnsTerms): ColumnsCheck {
   const planned = terms.columnas ?? draft.columns.length;
-  const fijos = terms.modo === "intuicion" ? terms.fijos ?? 0 : 0;
+  const fijos = terms.modo === "intuicion" ? terms.fijos ?? [] : [];
   const reasons: string[] = [];
   const incomplete: number[] = [];
   const multiSign: string[] = [];
@@ -147,8 +150,10 @@ export function checkColumns(draft: ColumnsDraft, terms: ColumnsTerms): ColumnsC
   const first = draft.columns[0];
   const unlocked: number[] = [];
   let fijosMarked = 0;
-  if (fijos > 0 && first) {
-    for (let row = 0; row < fijos; row += 1) {
+  if (fijos.length > 0 && first) {
+    for (const position of fijos) {
+      const row = position - 1;
+      if (row < 0 || row >= MATCH_COUNT) continue;
       const sign = first[row][0];
       if (first[row].length > 0) fijosMarked += 1;
       if (draft.columns.some(rows => rows[row].length !== first[row].length || rows[row][0] !== sign)) unlocked.push(row + 1);
@@ -161,7 +166,7 @@ export function checkColumns(draft: ColumnsDraft, terms: ColumnsTerms): ColumnsC
   if (over) reasons.push(`El boleto cuesta ${euro(costEur ?? "0")} y el presupuesto es de ${euro(terms.budgetEur)}.`);
   if (!draft.pleno.home || !draft.pleno.away) reasons.push("Elige los goles de los dos equipos del pleno al 15.");
   return {
-    completeColumns: complete, totalColumns: draft.columns.length, fijosMarked, fijosTotal: fijos,
+    completeColumns: complete, totalColumns: draft.columns.length, fijosMarked, fijosTotal: fijos.length,
     columns, costEur, over, reasons, canConfirm: reasons.length === 0,
   };
 }
@@ -206,18 +211,18 @@ export function columnsDraftFromPropuesta(propuesta: Pick<Propuesta, "columnas" 
 // ---- A member's vote: N columns ----
 
 /** What a member's vote has to look like for a porra: how many columns, one sign per row or free, how many fijos. */
-export type VoteRules = { modo: PorraModo; columnas: number; fijos: number };
+export type VoteRules = { modo: PorraModo; columnas: number; fijos: number[] };
 
 /** One column, free signs: what múltiple and reducida ask of a member. */
-export const SINGLE_COLUMN_RULES: VoteRules = { modo: "multiple", columnas: 1, fijos: 0 };
+export const SINGLE_COLUMN_RULES: VoteRules = { modo: "multiple", columnas: 1, fijos: [] };
 
 /** True for sencilla and Intuición: N columns with one sign per row. */
 export const isMultiColumnRules = (rules: Pick<VoteRules, "modo">): boolean => rules.modo === "sencilla" || rules.modo === "intuicion";
 
 export function voteRulesOf(porra: Pick<Porra, "modo" | "columnas" | "fijos">): VoteRules {
-  if (porra.modo === "sencilla") return { modo: "sencilla", columnas: Math.max(1, porra.columnas ?? 1), fijos: 0 };
-  if (porra.modo === "intuicion") return { modo: "intuicion", columnas: Math.max(1, porra.columnas ?? 1), fijos: porra.fijos ?? 0 };
-  return { modo: porra.modo, columnas: 1, fijos: 0 };
+  if (porra.modo === "sencilla") return { modo: "sencilla", columnas: Math.max(1, porra.columnas ?? 1), fijos: [] };
+  if (porra.modo === "intuicion") return { modo: "intuicion", columnas: Math.max(1, porra.columnas ?? 1), fijos: porra.fijos ?? [] };
+  return { modo: porra.modo, columnas: 1, fijos: [] };
 }
 
 /** The caller's saved columns as a draft with exactly the columns the porra plays; an empty draft when they have not voted. */
@@ -236,14 +241,22 @@ export function columnsDraftFromSheet(sheet: PicksSheet | null, rules: VoteRules
 export function voteCaption(rules: VoteRules): string | undefined {
   if (!isMultiColumnRules(rules)) return undefined;
   const base = `Rellena ${rules.columnas === 1 ? "la columna" : `las ${rules.columnas} columnas`}: un signo por partido en cada una`;
-  if (rules.modo !== "intuicion" || rules.fijos < 1) return base;
-  return `${base}. ${rules.fijos === 1 ? "El primer partido es fijo" : `Los primeros ${rules.fijos} partidos son fijos`}: el mismo signo en todas las columnas`;
+  if (rules.modo !== "intuicion" || rules.fijos.length < 1) return base;
+  return `${base}. ${fijosSentence(rules.fijos)}: el mismo signo en todas las columnas`;
+}
+
+/** "El primer partido es fijo", "Los primeros 10 partidos son fijos" or "Los partidos 3, 5 y 8 son fijos". */
+export function fijosSentence(fijos: readonly number[]): string {
+  if (fijos.length === 0) return "Ningún partido es fijo";
+  const leading = fijos.every((position, index) => position === index + 1);
+  if (leading) return fijos.length === 1 ? "El primer partido es fijo" : `Los primeros ${fijos.length} partidos son fijos`;
+  return fijos.length === 1 ? `El partido ${fijos[0]} es fijo` : `Los partidos ${joinNumbers(fijos)} son fijos`;
 }
 
 /**
  * Spanish per-field errors of a member's vote: `pick-N` (a row, for every column at once), `pleno-home`, `pleno-away` and
  * `columnas` (wrong number of columns). One column (múltiple, reducida): 1 to 3 signs per row. N columns: exactly one sign
- * per row in every column, and in Intuición the first `fijos` rows identical in all of them. Empty object means valid.
+ * per row in every column, and in Intuición the `fijos` rows identical in all of them. Empty object means valid.
  */
 export function validateColumnsVote(draft: ColumnsDraft, rules: VoteRules): FieldErrors {
   if (!isMultiColumnRules(rules)) {
@@ -266,7 +279,7 @@ export function validateColumnsVote(draft: ColumnsDraft, rules: VoteRules): Fiel
     const label = (columns: number[]) => `${columns.length === 1 ? "la columna" : "las columnas"} ${joinNumbers(columns)}`;
     if (missing.length > 0) errors[`pick-${row + 1}`] = `Partido ${row + 1}: marca un signo en ${label(missing)}.`;
     else if (several.length > 0) errors[`pick-${row + 1}`] = `Partido ${row + 1}: solo un signo por columna (revisa ${label(several)}).`;
-    else if (row < rules.fijos && draft.columns.some(rows => rows[row][0] !== draft.columns[0][row][0])) {
+    else if (isFijoRow(rules.fijos, row) && draft.columns.some(rows => rows[row][0] !== draft.columns[0][row][0])) {
       errors[`pick-${row + 1}`] = `Partido ${row + 1}: es fijo y debe llevar el mismo signo en todas las columnas.`;
     }
   }

@@ -11,8 +11,8 @@ type Props = {
   /** Highlighted column (0-based); with `onSelect` its header becomes a button. */
   activeIndex?: number;
   onSelect?: (index: number) => void;
-  /** Matches 1..lockedRows are Intuición fijos, drawn with an ink background. */
-  lockedRows?: number;
+  /** These matches (1-based) are Intuición fijos, drawn with an ink background. */
+  lockedRows?: readonly number[];
   className?: string;
 };
 
@@ -22,7 +22,7 @@ const nameOf = (full: string, short?: string | null) => short?.trim() || full;
  * All the columns of a boleto at a glance: one row per match, one narrow cell per column. It scrolls sideways inside its
  * own box (the match column stays put), so twelve columns never widen the page.
  */
-export function ColumnsMatrix({ fixtures, columns, activeIndex, onSelect, lockedRows = 0, className }: Props) {
+export function ColumnsMatrix({ fixtures, columns, activeIndex, onSelect, lockedRows = [], className }: Props) {
   const rows = fixtures.filter(fixture => fixture.position >= 1 && fixture.position <= MATCH_COUNT).sort((a, b) => a.position - b.position);
   return (
     <div role="region" aria-label="Resumen de todas las columnas" tabIndex={0} className={cn("overflow-x-auto rounded-control border border-ink/40 bg-cream text-ink", className)}>
@@ -62,7 +62,7 @@ export function ColumnsMatrix({ fixtures, columns, activeIndex, onSelect, locked
               {columns.map((rowsOfColumn, index) => {
                 const signs = rowsOfColumn[fixture.position - 1] ?? [];
                 return (
-                  <td key={index} className={cn("px-0.5 py-1 text-center font-bold", activeIndex === index && "bg-ink/10", fixture.position <= lockedRows && "bg-ink/15")}>
+                  <td key={index} className={cn("px-0.5 py-1 text-center font-bold", activeIndex === index && "bg-ink/10", lockedRows.includes(fixture.position) && "bg-ink/15")}>
                     {signs.length > 0 ? signs.join("") : <span aria-label="sin marcar" className="text-ink/40">·</span>}
                   </td>
                 );

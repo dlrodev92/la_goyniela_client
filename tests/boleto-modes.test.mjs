@@ -42,7 +42,11 @@ test("PorraOut parses the four modes; old APIs without modo are múltiple", asyn
   const sencilla = await gw(async () => json(porraWire())).get("2", "5");
   assert.deepEqual([sencilla.modo, sencilla.columnas, sencilla.fijos, sencilla.reduccion, sencilla.columns, sencilla.costEur], ["sencilla", 6, null, null, 6, "4.50"]);
   const intuicion = await gw(async () => json(porraWire({ modo: "intuicion", fijos: 10, columnas: 6 }))).get("2", "5");
-  assert.deepEqual([intuicion.modo, intuicion.fijos, intuicion.columnas], ["intuicion", 10, 6]);
+  assert.deepEqual([intuicion.modo, intuicion.fijos, intuicion.columnas], ["intuicion", M.firstFijos(10), 6], "the legacy count N reads as partidos 1..N");
+  const arbitrary = await gw(async () => json(porraWire({ modo: "intuicion", fijos: [8, 3, 5], columnas: 6 }))).get("2", "5");
+  assert.deepEqual(arbitrary.fijos, [3, 5, 8], "an arbitrary list is kept, sorted");
+  assert.deepEqual((await gw(async () => json(porraWire({ modo: "intuicion", fijos: [], columnas: 2 }))).get("2", "5")).fijos, []);
+  await rejectsCode(gw(async () => json(porraWire({ modo: "intuicion", fijos: [0, 15], columnas: 6 }))).get("2", "5"), "malformed");
   const withCode = await gw(async () => json(porraWire({ modo: "reducida", columnas: null, dobles: 3, triples: 3, reduccion: "R3", columns: 24, cost_eur: "18.00" }))).get("2", "5");
   assert.deepEqual([withCode.modo, withCode.reduccion, withCode.columns], ["reducida", "R3", 24]);
   const derived = await gw(async () => json(porraWire({ modo: "reducida", columnas: null, dobles: 6, triples: 2, columns: 64, cost_eur: "48.00" }))).get("2", "5");
@@ -79,14 +83,16 @@ test("the create body carries each mode's own fields and never the price", async
     { modo: "multiple", dobles: 1, triples: 1 },
     { modo: "sencilla", columnas: 6 },
     { modo: "reducida", reduccion: "R3" },
-    { modo: "intuicion", fijos: 10, columnas: 6 },
+    { modo: "intuicion", fijos: M.firstFijos(10), columnas: 6 },
+    { modo: "intuicion", fijos: [2, 7, 14], columnas: 4 },
   ];
   for (const spec of specs) await A.createPorra(g, "2", { jornadaId: "11", budgetEur: "6.00", spec });
   assert.deepEqual(bodies, [
     { jornada_id: 11, budget_eur: "6.00", modo: "multiple", dobles: 1, triples: 1 },
     { jornada_id: 11, budget_eur: "6.00", modo: "sencilla", columnas: 6 },
     { jornada_id: 11, budget_eur: "6.00", modo: "reducida", reduccion: "R3" },
-    { jornada_id: 11, budget_eur: "6.00", modo: "intuicion", fijos: 10, columnas: 6 },
+    { jornada_id: 11, budget_eur: "6.00", modo: "intuicion", fijos: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10], columnas: 6 },
+    { jornada_id: 11, budget_eur: "6.00", modo: "intuicion", fijos: [2, 7, 14], columnas: 4 },
   ]);
   assert.ok(bodies.every(body => !("precio_apuesta_eur" in body)));
 });
@@ -96,12 +102,15 @@ test("invalid specs never reach the API", async () => {
   const g = gw(fetcher);
   for (const spec of [
     { modo: "multiple", dobles: 0, triples: 0 }, { modo: "multiple", dobles: 8, triples: 7 }, { modo: "sencilla", columnas: 1 }, { modo: "sencilla", columnas: 13 },
-    { modo: "reducida", reduccion: "R7" }, { modo: "intuicion", fijos: 14, columnas: 6 }, { modo: "intuicion", fijos: 3, columnas: 1 }, { modo: "gratis" },
+    { modo: "reducida", reduccion: "R7" }, { modo: "intuicion", fijos: M.firstFijos(14), columnas: 6 }, { modo: "intuicion", fijos: [1, 2, 3], columnas: 1 },
+    { modo: "intuicion", fijos: 3, columnas: 6 }, { modo: "intuicion", fijos: [3, 3], columnas: 6 }, { modo: "intuicion", fijos: [5, 2], columnas: 6 }, { modo: "intuicion", fijos: [15], columnas: 6 },
+    { modo: "gratis" },
   ]) await rejectsCode(A.createPorra(g, "2", { jornadaId: "11", budgetEur: "6.00", spec }), "invalid-porra");
   assert.equal(calls.length, 0);
   assert.equal(M.isValidSpec({ modo: "sencilla", columnas: 2 }), true);
-  assert.equal(M.isValidSpec({ modo: "intuicion", fijos: 13, columnas: 2 }), true);
-  assert.equal(M.isValidSpec({ modo: "intuicion", fijos: 0, columnas: 12 }), true);
+  assert.equal(M.isValidSpec({ modo: "intuicion", fijos: M.firstFijos(13), columnas: 2 }), true);
+  assert.equal(M.isValidSpec({ modo: "intuicion", fijos: [], columnas: 12 }), true);
+  assert.equal(M.isValidSpec({ modo: "intuicion", fijos: [1, 4, 14], columnas: 3 }), true);
 });
 
 test("a patch can be budget-only, format-only or both", async () => {
@@ -116,12 +125,14 @@ test("a patch can be budget-only, format-only or both", async () => {
 
 test("specs round trip through form fields, and budgetText seeds the input", () => {
   const fields = spec => { const f = M.specFields(spec); return M.specFromFields(name => f[name] ?? null); };
-  for (const spec of [{ modo: "multiple", dobles: 2, triples: 1 }, { modo: "sencilla", columnas: 5 }, { modo: "reducida", reduccion: "R6" }, { modo: "intuicion", fijos: 8, columnas: 9 }]) {
+  for (const spec of [{ modo: "multiple", dobles: 2, triples: 1 }, { modo: "sencilla", columnas: 5 }, { modo: "reducida", reduccion: "R6" }, { modo: "intuicion", fijos: M.firstFijos(8), columnas: 9 }, { modo: "intuicion", fijos: [2, 9, 13], columnas: 3 }, { modo: "intuicion", fijos: [], columnas: 2 }]) {
     assert.deepEqual(fields(spec), spec);
   }
   assert.equal(M.specFromFields(name => ({ modo: "sencilla", columnas: "1" })[name] ?? null), null);
   assert.equal(M.specFromFields(name => ({ modo: "reducida" })[name] ?? null), null);
   assert.equal(M.specFromFields(() => null), null);
+  assert.equal(M.specFromFields(name => ({ modo: "intuicion", fijos: "3,x", columnas: "4" })[name] ?? null), null);
+  assert.equal(M.specFields({ modo: "intuicion", fijos: [2, 9], columnas: 3 }).fijos, "2,9");
   assert.equal(L.budgetText("6.00"), "6");
   assert.equal(L.budgetText("6.50"), "6,50");
   assert.equal(L.budgetText("1234.05"), "1234,05");
@@ -230,8 +241,8 @@ test("sencilla: N complete columns of one sign each", () => {
   assert.equal(over.over, true);
 });
 
-test("intuicion: the first fijos partidos must agree in every column", () => {
-  const terms = termsOf({ modo: "intuicion", fijos: 3, columnas: 2 });
+test("intuicion: the fijos partidos must agree in every column", () => {
+  const terms = termsOf({ modo: "intuicion", fijos: [1, 2, 3], columnas: 2 });
   const a = column("1"); const b = column("1"); b[10] = ["X"];
   const ok = C.checkColumns(draftOf([a, b]), terms);
   assert.deepEqual([ok.canConfirm, ok.fijosMarked, ok.fijosTotal], [true, 3, 3]);
@@ -242,6 +253,12 @@ test("intuicion: the first fijos partidos must agree in every column", () => {
   // A variable partido may differ, a fijo may not: partido 4 is not locked.
   const varies = column("1"); varies[3] = ["2"];
   assert.equal(C.checkColumns(draftOf([a, varies]), terms).canConfirm, true);
+  // Arbitrary fijos: partidos 4 and 11 locked, partido 1 free.
+  const scattered = termsOf({ modo: "intuicion", fijos: [4, 11], columnas: 2 });
+  const free = column("1"); free[0] = ["2"];
+  assert.deepEqual(C.checkColumns(draftOf([a, free]), scattered).fijosTotal, 2);
+  assert.equal(C.checkColumns(draftOf([a, free]), scattered).canConfirm, true);
+  assert.deepEqual(C.checkColumns(draftOf([a, b]), scattered).reasons, ["Los partidos fijos (11) deben llevar el mismo signo en todas las columnas."]);
 });
 
 test("múltiple and reducida stay one column with exact dobles and triples; a reducida plays the reduction's apuestas", () => {
@@ -269,20 +286,23 @@ test("múltiple and reducida stay one column with exact dobles and triples; a re
 
 test("a fijo is edited once and mirrored to every column; variable rows stay per column", () => {
   const start = C.emptyColumnsDraft(3);
-  const withFijo = C.setColumnSign(start, 1, 2, "X", 3);
+  const withFijo = C.setColumnSign(start, 1, 2, "X", [1, 2, 3]);
   assert.deepEqual(withFijo.columns.map(rows => rows[1]), [["X"], ["X"], ["X"]]);
-  const variable = C.setColumnSign(withFijo, 1, 8, "2", 3);
+  const variable = C.setColumnSign(withFijo, 1, 8, "2", [1, 2, 3]);
   assert.deepEqual(variable.columns.map(rows => rows[7]), [[], ["2"], []]);
   assert.deepEqual(start.columns[0][1], [], "pure: the previous draft is untouched");
   // Replaces the sign instead of toggling several.
-  assert.deepEqual(C.setColumnSign(variable, 1, 8, "1", 3).columns[1][7], ["1"]);
+  assert.deepEqual(C.setColumnSign(variable, 1, 8, "1", [1, 2, 3]).columns[1][7], ["1"]);
+  // An arbitrary fijo (partido 8) mirrors; partido 2 is then variable.
+  assert.deepEqual(C.setColumnSign(start, 2, 8, "2", [5, 8]).columns.map(rows => rows[7]), [["2"], ["2"], ["2"]]);
+  assert.deepEqual(C.setColumnSign(start, 2, 2, "2", [5, 8]).columns.map(rows => rows[1]), [[], [], ["2"]]);
   // Without fijos (sencilla) nothing is mirrored.
   assert.deepEqual(C.setColumnSign(start, 0, 2, "X").columns.map(rows => rows[1]), [["X"], [], []]);
   assert.equal(C.setColumnSign(start, 5, 2, "X"), start);
   assert.equal(C.setColumnSign(start, 0, 15, "X"), start);
   // Copy the previous column: variable rows only.
-  const filled = C.setColumnSign(C.setColumnSign(C.setColumnSign(start, 0, 1, "1", 1), 0, 5, "2", 1), 1, 5, "X", 1);
-  const copied = C.copyPreviousColumn(filled, 1, 1);
+  const filled = C.setColumnSign(C.setColumnSign(C.setColumnSign(start, 0, 1, "1", [1]), 0, 5, "2", [1]), 1, 5, "X", [1]);
+  const copied = C.copyPreviousColumn(filled, 1, [1]);
   assert.deepEqual(copied.columns[1][4], ["2"], "the variable rows copy column 1");
   assert.deepEqual(copied.columns[1][0], ["1"], "the fijos stay mirrored");
   const copiedFrom0 = C.copyPreviousColumn(C.setColumnSign(start, 0, 9, "2"), 1);
@@ -292,15 +312,15 @@ test("a fijo is edited once and mirrored to every column; variable rows stay per
 
 test("fitColumns pads, trims and re-mirrors the fijos from column 1", () => {
   let draft = C.emptyColumnsDraft(2);
-  draft = C.setColumnSign(draft, 0, 1, "1", 2);
-  draft = C.setColumnSign(draft, 0, 6, "X", 2);
-  const grown = C.fitColumns(draft, 4, 2);
+  draft = C.setColumnSign(draft, 0, 1, "1", [1, 2]);
+  draft = C.setColumnSign(draft, 0, 6, "X", [1, 2]);
+  const grown = C.fitColumns(draft, 4, [1, 2]);
   assert.equal(grown.columns.length, 4);
   assert.deepEqual(grown.columns[3][0], ["1"], "new columns inherit the fijos");
   assert.deepEqual(grown.columns[3][5], [], "but not the variable rows");
-  assert.equal(C.fitColumns(grown, 2, 2).columns.length, 2);
+  assert.equal(C.fitColumns(grown, 2, [1, 2]).columns.length, 2);
   const skewed = { ...draft, columns: [draft.columns[0], draft.columns[1].map((signs, row) => (row === 0 ? ["2"] : signs))] };
-  assert.deepEqual(C.fitColumns(skewed, 2, 2).columns[1][0], ["1"]);
+  assert.deepEqual(C.fitColumns(skewed, 2, [1, 2]).columns[1][0], ["1"]);
 });
 
 test("isColumnsDraft guards what the server action receives", () => {
@@ -342,7 +362,9 @@ test("propuesta parses the new per-column shape: one column for múltiple, N for
   const many = await gw(async () => json(propuestaWire([columnaWire(2, () => [{ "1": 0, X: 0, "2": 4 }, ["2"]]), columnaWire(1), columnaWire(3, () => [{ "1": 0, X: 2, "2": 0 }, ["X"]])], { modo: "intuicion", fijos: 10 }))).propuesta("2", "5");
   assert.deepEqual(many.columnas.map(column => column.index), [1, 2, 3], "ordered by columna_idx");
   assert.deepEqual(many.columnas[1].matches[0].signs, ["2"]);
-  assert.equal(many.fijos, 10);
+  assert.deepEqual(many.fijos, M.firstFijos(10));
+  const scattered = await gw(async () => json(propuestaWire([columnaWire(1), columnaWire(2)], { modo: "intuicion", fijos: [3, 7] }))).propuesta("2", "5");
+  assert.deepEqual(scattered.fijos, [3, 7]);
   assert.equal(many.matches, many.columnas[0].matches);
   assert.equal("plenoCounts" in many, false);
 });
@@ -363,12 +385,12 @@ test("the editor is seeded straight from each column of the proposal", async () 
     columnaWire(3, order => [{ "1": 3, X: 1, "2": 0 }, [order <= 10 ? "1" : "1"]]),
   ], { modo: "intuicion", fijos: 10 });
   const propuesta = await gw(async () => json(wire)).propuesta("2", "5");
-  const seed = C.columnsDraftFromPropuesta(propuesta, { modo: "intuicion", fijos: 10, columnas: 3 });
+  const seed = C.columnsDraftFromPropuesta(propuesta, { modo: "intuicion", fijos: M.firstFijos(10), columnas: 3 });
   assert.equal(seed.columns.length, 3);
   assert.deepEqual(seed.columns.map(rows => rows[13][0]), ["X", "2", "1"], "each column keeps its own reparto");
   assert.deepEqual(seed.columns[1][0], ["1"]);
   assert.deepEqual(seed.pleno, { home: "M", away: "2" });
-  assert.equal(C.checkColumns(seed, termsOf({ modo: "intuicion", fijos: 10, columnas: 3, budgetEur: "6.00" })).canConfirm, true);
+  assert.equal(C.checkColumns(seed, termsOf({ modo: "intuicion", fijos: M.firstFijos(10), columnas: 3, budgetEur: "6.00" })).canConfirm, true);
 
   // Fewer proposal columns than the porra plays: the missing ones start from a copy of the first (fijos mirrored).
   const short = C.columnsDraftFromPropuesta(propuesta, { modo: "sencilla", columnas: 5 });
@@ -417,14 +439,14 @@ test("wireVote sends columnas for every mode and never the rejected picks key", 
   assert.ok(sencilla.columnas.every(column => column.matches.every(match => match.signs.length === 1)));
   // intuicion: same, with the first F rows identical everywhere.
   const columns = [rowsOf("1", "1", "1", "X"), rowsOf("1", "1", "1", "2")];
-  const intuicion = await send(voteDraft(columns), C.voteRulesOf({ modo: "intuicion", columnas: 2, fijos: 3 }));
+  const intuicion = await send(voteDraft(columns), C.voteRulesOf({ modo: "intuicion", columnas: 2, fijos: [1, 2, 3] }));
   assert.equal(intuicion.columnas.length, 2);
   assert.deepEqual(intuicion.columnas.map(column => column.matches[3].signs), [["X"], ["2"]]);
 });
 
 test("a multi-column vote is checked before it reaches the API", async () => {
   const sencilla = C.voteRulesOf({ modo: "sencilla", columnas: 3, fijos: null });
-  const intuicion = C.voteRulesOf({ modo: "intuicion", columnas: 2, fijos: 3 });
+  const intuicion = C.voteRulesOf({ modo: "intuicion", columnas: 2, fijos: [1, 2, 3] });
   assert.deepEqual(C.validateColumnsVote(voteDraft([rowsOf(), rowsOf(), rowsOf()]), sencilla), {});
   // wrong number of columns
   const wrongCount = C.validateColumnsVote(voteDraft([rowsOf(), rowsOf()]), sencilla);
@@ -439,7 +461,8 @@ test("a multi-column vote is checked before it reaches the API", async () => {
   // fijo mismatch (Intuición only)
   const skew = voteDraft([rowsOf("1", "1", "1"), rowsOf("1", "X", "1")]);
   assert.match(C.validateColumnsVote(skew, intuicion)["pick-2"], /Partido 2: es fijo y debe llevar el mismo signo en todas las columnas/);
-  assert.equal(C.validateColumnsVote(skew, { ...intuicion, fijos: 1 })["pick-2"], undefined, "row 2 is variable with one fijo");
+  assert.equal(C.validateColumnsVote(skew, { ...intuicion, fijos: [1] })["pick-2"], undefined, "row 2 is variable with one fijo");
+  assert.match(C.validateColumnsVote(skew, { ...intuicion, fijos: [2, 9] })["pick-2"], /Partido 2: es fijo/, "an arbitrary fijo is checked too");
   // the pleno is required
   assert.ok(C.validateColumnsVote({ columns: [rowsOf(), rowsOf(), rowsOf()], pleno: { home: null, away: "1" } }, sencilla)["pleno-home"]);
   // single column rules keep 1 to 3 free signs
@@ -454,13 +477,20 @@ test("the vote caption explains the columns and the fijos", () => {
   assert.equal(C.voteCaption(C.voteRulesOf({ modo: "multiple" })), undefined);
   assert.equal(C.voteCaption(C.voteRulesOf({ modo: "sencilla", columnas: 4 })), "Rellena las 4 columnas: un signo por partido en cada una");
   assert.equal(
-    C.voteCaption(C.voteRulesOf({ modo: "intuicion", columnas: 4, fijos: 10 })),
+    C.voteCaption(C.voteRulesOf({ modo: "intuicion", columnas: 4, fijos: M.firstFijos(10) })),
     "Rellena las 4 columnas: un signo por partido en cada una. Los primeros 10 partidos son fijos: el mismo signo en todas las columnas",
   );
+  assert.equal(
+    C.voteCaption(C.voteRulesOf({ modo: "intuicion", columnas: 2, fijos: [3, 5, 8] })),
+    "Rellena las 2 columnas: un signo por partido en cada una. Los partidos 3, 5 y 8 son fijos: el mismo signo en todas las columnas",
+  );
+  assert.equal(C.fijosSentence([1]), "El primer partido es fijo");
+  assert.equal(C.fijosSentence([6]), "El partido 6 es fijo");
+  assert.equal(C.fijosSentence([]), "Ningún partido es fijo");
 });
 
 test("a saved vote becomes a draft with exactly the porra's columns", () => {
-  const rules = C.voteRulesOf({ modo: "intuicion", columnas: 3, fijos: 2 });
+  const rules = C.voteRulesOf({ modo: "intuicion", columnas: 3, fijos: [1, 2] });
   assert.equal(C.columnsDraftFromSheet(null, rules).columns.length, 3);
   const sheet = { picks: [], columnas: [[{ position: 1, signs: ["X"] }, { position: 3, signs: ["2"] }]], pleno: { home: "1", away: "M" }, matches: [] };
   const draft = C.columnsDraftFromSheet(sheet, rules);

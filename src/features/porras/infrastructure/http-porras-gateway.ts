@@ -5,7 +5,7 @@ import type {
   Porra, PorraDetail, PorraFormat, PorraSpec, PorrasGateway, PorraStatus, Propuesta, PropuestaColumn, PropuestaMatch, ReduccionCode, Sign, TeamRef, Vote,
 } from "../domain/porras";
 import { sortSigns } from "../domain/logic";
-import { reduccionForFormat } from "../domain/modes";
+import { normalizeFijos, reduccionForFormat } from "../domain/modes";
 import { createAuthenticatedClient } from "../../../lib/http/json-client";
 import { ServiceError, type FailureCode } from "../../../lib/http/errors";
 import { windowConflict, windowFailureCode, type WindowContext } from "../../../lib/http/window-conflict";
@@ -18,6 +18,8 @@ const money = z.union([z.string().regex(/^\d+(\.\d+)?$/), z.number().nonnegative
 const sign = z.enum(["1", "X", "2"]);
 const goals = z.enum(["0", "1", "2", "M"]);
 const count = z.number().int().nonnegative();
+/** Intuición fijos: the legacy count N (partidos 1..N) or the list of locked partidos. Both read as the list. */
+const fijos = z.union([z.number().int().min(0).max(14), z.array(z.number().int().min(1).max(14)).max(14)]);
 
 const formatSchema = z.object({ dobles: count, triples: count, columns: count, coste_eur: money });
 const missingSchema = z.object({ user_id: id, display_name: z.string() });
@@ -28,7 +30,7 @@ const porraSchema = z.object({
   id, group_id: id, jornada_id: id, created_by_user_id: id, budget_eur: money, dobles: count, triples: count,
   /** Older builds have no `modo`: they are all múltiple. */
   modo: modo.default("multiple"),
-  fijos: count.nullable().optional(),
+  fijos: fijos.nullable().optional(),
   columnas: count.nullable().optional(),
   /** `PorraOut` does not carry the code today (only `BoletoOut` does): optional, derived from (dobles, triples) when absent. */
   reduccion: reduccionCode.nullable().optional(),
@@ -63,7 +65,7 @@ const propuestaPartidoSchema = z.object({
   kind: z.string(),
 });
 const propuestaSchema = z.object({
-  porra_id: id, modo: modo.default("multiple"), fijos: count.nullable().optional(), columns: count, cost_eur: money,
+  porra_id: id, modo: modo.default("multiple"), fijos: fijos.nullable().optional(), columns: count, cost_eur: money,
   /** One entry for múltiple and reducida, N (`columna_idx` 1-based) for sencilla and Intuición; each one is its own proposal. */
   columnas: z.array(z.object({ columna_idx: z.number().int().min(1), partidos: z.array(propuestaPartidoSchema) })).min(1),
   /** The Pleno al 15 is shared by every column, so it is a sibling of `columnas`. */
@@ -92,7 +94,7 @@ function toPorra(w: z.infer<typeof porraSchema>): Porra {
   const reduccion: ReduccionCode | null = w.modo === "reducida" ? w.reduccion ?? reduccionForFormat(w.dobles, w.triples)?.code ?? null : null;
   return {
     id: String(w.id), groupId: String(w.group_id), jornadaId: String(w.jornada_id), createdByUserId: String(w.created_by_user_id),
-    budgetEur: w.budget_eur, modo: w.modo, dobles: w.dobles, triples: w.triples, fijos: w.fijos ?? null, columnas: w.columnas ?? null, reduccion,
+    budgetEur: w.budget_eur, modo: w.modo, dobles: w.dobles, triples: w.triples, fijos: w.fijos == null ? null : normalizeFijos(w.fijos), columnas: w.columnas ?? null, reduccion,
     precioApuestaEur: w.precio_apuesta_eur, status: w.status,
     createdAt: w.created_at, updatedAt: w.updated_at, columns: w.columns, costEur: w.cost_eur, hasBoleto: w.has_boleto,
   };
@@ -165,7 +167,7 @@ function toPropuestaColumn(w: z.infer<typeof propuestaSchema>["columnas"][number
 function toPropuesta(w: z.infer<typeof propuestaSchema>): Propuesta {
   const columnas = w.columnas.map(toPropuestaColumn).sort((a, b) => a.index - b.index);
   return {
-    porraId: String(w.porra_id), modo: w.modo, fijos: w.fijos ?? null, columns: w.columns, costEur: w.cost_eur,
+    porraId: String(w.porra_id), modo: w.modo, fijos: w.fijos == null ? null : normalizeFijos(w.fijos), columns: w.columns, costEur: w.cost_eur,
     columnas, matches: columnas[0].matches,
     pleno: { home: w.pleno.local, away: w.pleno.visitante },
     participation: toParticipation(w.participation),

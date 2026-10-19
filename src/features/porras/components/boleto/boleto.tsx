@@ -72,8 +72,8 @@ type Editable = Shared & {
    * chosen sign instead of toggling it through `onChange`. The pleno still goes through `onChange`.
    */
   onSign?: (position: number, sign: Sign) => void;
-  /** With `onSign`: matches 1..lockedRows are tagged "Fijo" (they are edited once and mirrored to every column). */
-  lockedRows?: number;
+  /** With `onSign` or `columnPicks`: these matches (1-based) are tagged "Fijo" (they are edited once and mirrored to every column). */
+  lockedRows?: readonly number[];
   /** With `columnPicks` (`vote`, `edit`): a click on a sign of column `column` (0-based). The domain helper mirrors the fijos. */
   onColumnSign?: (column: number, position: number, sign: Sign) => void;
   /** With `columnPicks` (`vote`, `edit`): shows a "copy the previous column" control in the header of every column but the first. */
@@ -145,6 +145,8 @@ const shareText = (weights: Record<Sign, number>) => {
   return `Reparto de votos: 1 ${shares["1"]} %, X ${shares.X} %, 2 ${shares["2"]} %`;
 };
 
+const NO_ROWS: readonly number[] = [];
+
 const countsText = (counts: PlenoCounts) => GOALS.map(goal => `${goal}: ${counts[goal]}`).join(" · ");
 
 type BoxProps = {
@@ -186,7 +188,7 @@ export function Boleto(props: BoletoProps) {
   const editable = props.mode === "vote" || props.mode === "edit";
   const onChange = editable ? (props as Editable).onChange : undefined;
   const onSign = editable ? (props as Editable).onSign : undefined;
-  const lockedRows = editable ? (props as Editable).lockedRows ?? 0 : 0;
+  const lockedRows = (editable ? (props as Editable).lockedRows : undefined) ?? NO_ROWS;
   const onColumnSign = editable ? (props as Editable).onColumnSign : undefined;
   const onCopyColumn = editable ? (props as Editable).onCopyColumn : undefined;
   const columnPicks = props.columnPicks;
@@ -284,7 +286,7 @@ export function Boleto(props: BoletoProps) {
               const away = nameOf(fx.awayName, fx.awayShort);
               const error = errors[pickField(fx.position)];
               const errorId = `${uid}-err-${fx.position}`;
-              const fijo = fx.position <= lockedRows;
+              const fijo = lockedRows.includes(fx.position);
               return (
                 <fieldset key={fx.position} aria-describedby={error ? errorId : undefined} className={cn("border-b border-ink/30 py-1", index % 2 === 0 && "bg-ink/[0.04]")}>
                   <legend className="sr-only">
@@ -356,7 +358,7 @@ export function Boleto(props: BoletoProps) {
                     {proposal?.weights[fx.position] && <ShareBars weights={proposal.weights[fx.position]} chosen={signs} />}
                   </div>
                 )}
-                {onSign && fx.position <= lockedRows && (
+                {onSign && lockedRows.includes(fx.position) && (
                   <div className="flex justify-end pb-1">
                     <FixedTag />
                   </div>

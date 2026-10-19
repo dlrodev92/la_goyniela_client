@@ -14,7 +14,7 @@ type Props = {
   /** Apuestas played and their cost, as the API reports them. */
   apuestas: number;
   costEur: string;
-  lockedRows?: number;
+  lockedRows?: readonly number[];
   stamp?: string | null;
   /** Sentence under the title; defaults to "Tu peña juega N columnas". */
   caption?: string;
@@ -24,7 +24,7 @@ type Props = {
 const nameOf = (full: string, short?: string | null) => short?.trim() || full;
 
 /** Read-only official boleto with several printed columns (sencilla, Intuición): every column, the pleno and the cost. */
-export function ColumnsSheet({ jornada, temporada, fixtures, columns, pleno, apuestas, costEur, lockedRows = 0, stamp = "Boleto de la peña", caption, className }: Props) {
+export function ColumnsSheet({ jornada, temporada, fixtures, columns, pleno, apuestas, costEur, lockedRows = [], stamp = "Boleto de la peña", caption, className }: Props) {
   const plenoMatch = fixtures.find(fixture => fixture.position === 15);
   const teams = [
     { role: "Local", name: plenoMatch ? nameOf(plenoMatch.homeName, plenoMatch.homeShort) : "Local", goals: pleno.home },

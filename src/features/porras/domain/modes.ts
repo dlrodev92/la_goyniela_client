@@ -17,7 +17,7 @@ export const MODE_BLURB: Record<PorraModo, string> = {
   multiple: "Una columna con dobles y triples. Se juegan todas las combinaciones.",
   sencilla: "Varias columnas independientes con un solo signo por partido.",
   reducida: "Una columna con dobles y triples y un número fijo de apuestas, según las reducciones oficiales.",
-  intuicion: "Varias columnas con los primeros partidos fijos y el resto variando.",
+  intuicion: "Varias columnas con algunos partidos fijos y el resto variando.",
 };
 
 export type Reduccion = { code: ReduccionCode; dobles: number; triples: number; apuestas: number };
@@ -46,6 +46,27 @@ export const reduccionForFormat = (dobles: number, triples: number): Reduccion |
 const isInt = (value: unknown): value is number => typeof value === "number" && Number.isInteger(value);
 const inRange = (value: unknown, min: number, max: number): value is number => isInt(value) && value >= min && value <= max;
 
+/** Partidos 1..count: the legacy "first N are fijos" as a list. */
+export const firstFijos = (count: number): number[] => Array.from({ length: Math.max(0, Math.min(count, MATCH_COUNT)) }, (_, index) => index + 1);
+
+/**
+ * Intuición fijos as the sorted list of locked partidos (1..14). The API sends the legacy count N (partidos 1..N) or the
+ * list itself; out-of-range entries and duplicates are dropped, null gives none.
+ */
+export function normalizeFijos(value: number | readonly number[] | null | undefined): number[] {
+  if (value === null || value === undefined) return [];
+  if (typeof value === "number") return firstFijos(value);
+  return [...new Set(value.filter(position => inRange(position, 1, MATCH_COUNT)))].sort((a, b) => a - b);
+}
+
+/** True when an untrusted value is a valid fijos list: distinct partidos 1..14, ascending, at least one left variable. */
+export function isValidFijos(value: unknown): value is number[] {
+  return Array.isArray(value) && value.length <= MAX_FIJOS
+    && value.every((position, index) => inRange(position, 1, MATCH_COUNT) && (index === 0 || position > value[index - 1]));
+}
+
+const sameFijos = (a: readonly number[], b: readonly number[]): boolean => a.length === b.length && a.every((position, index) => position === b[index]);
+
 /** True when an untrusted value is a well-formed mode with in-range parameters. Cost against the budget is the API's call. */
 export function isValidSpec(value: unknown): value is PorraSpec {
   if (typeof value !== "object" || value === null) return false;
@@ -54,7 +75,7 @@ export function isValidSpec(value: unknown): value is PorraSpec {
     case "multiple": return isInt(spec.dobles) && isInt(spec.triples) && isValidFormat(spec.dobles, spec.triples);
     case "sencilla": return inRange(spec.columnas, MIN_COLUMNAS, MAX_COLUMNAS);
     case "reducida": return isReduccionCode(spec.reduccion);
-    case "intuicion": return inRange(spec.fijos, 0, MAX_FIJOS) && inRange(spec.columnas, MIN_COLUMNAS, MAX_COLUMNAS);
+    case "intuicion": return isValidFijos(spec.fijos) && inRange(spec.columnas, MIN_COLUMNAS, MAX_COLUMNAS);
     default: return false;
   }
 }
@@ -63,7 +84,7 @@ export function isValidSpec(value: unknown): value is PorraSpec {
 export function specOf(porra: Pick<Porra, "modo" | "dobles" | "triples" | "fijos" | "columnas" | "reduccion">): PorraSpec {
   switch (porra.modo) {
     case "sencilla": return { modo: "sencilla", columnas: porra.columnas ?? MIN_COLUMNAS };
-    case "intuicion": return { modo: "intuicion", fijos: porra.fijos ?? 0, columnas: porra.columnas ?? MIN_COLUMNAS };
+    case "intuicion": return { modo: "intuicion", fijos: porra.fijos ?? [], columnas: porra.columnas ?? MIN_COLUMNAS };
     case "reducida": {
       const reduccion = porra.reduccion ?? reduccionForFormat(porra.dobles, porra.triples)?.code ?? REDUCCIONES[0].code;
       return { modo: "reducida", reduccion };
@@ -78,7 +99,7 @@ export function sameSpec(a: PorraSpec | null | undefined, b: PorraSpec | null | 
     case "multiple": return b.modo === "multiple" && a.dobles === b.dobles && a.triples === b.triples;
     case "sencilla": return b.modo === "sencilla" && a.columnas === b.columnas;
     case "reducida": return b.modo === "reducida" && a.reduccion === b.reduccion;
-    case "intuicion": return b.modo === "intuicion" && a.fijos === b.fijos && a.columnas === b.columnas;
+    case "intuicion": return b.modo === "intuicion" && sameFijos(a.fijos, b.fijos) && a.columnas === b.columnas;
   }
 }
 
@@ -88,7 +109,7 @@ export function specKey(spec: PorraSpec): string {
     case "multiple": return `multiple-${spec.dobles}-${spec.triples}`;
     case "sencilla": return `sencilla-${spec.columnas}`;
     case "reducida": return `reducida-${spec.reduccion}`;
-    case "intuicion": return `intuicion-${spec.fijos}-${spec.columnas}`;
+    case "intuicion": return `intuicion-${spec.fijos.join(".")}-${spec.columnas}`;
   }
 }
 
@@ -106,7 +127,7 @@ export function specLabel(spec: PorraSpec): string {
       const reduccion = reduccionOf(spec.reduccion);
       return reduccion ? `${MODE_LABEL.reducida} ${reduccion.code} · ${formatName(reduccion.dobles, reduccion.triples)}` : MODE_LABEL.reducida;
     }
-    case "intuicion": return `${MODE_LABEL.intuicion} · ${plural(spec.fijos, "fijo", "fijos")} y ${plural(MATCH_COUNT - spec.fijos, "variable", "variables")}`;
+    case "intuicion": return `${MODE_LABEL.intuicion} · ${plural(spec.fijos.length, "fijo", "fijos")} y ${plural(MATCH_COUNT - spec.fijos.length, "variable", "variables")}`;
   }
 }
 
@@ -182,10 +203,12 @@ export function intuicionOptionsFor(options: readonly IntuicionOption[], budgetE
 }
 
 const toInt = (raw: string | null): number | null => (raw !== null && /^\d{1,3}$/.test(raw.trim()) ? Number(raw.trim()) : null);
+/** "3,5,8" -> [3, 5, 8]; "" -> []. Null when any entry is not a number. */
+const toInts = (raw: string | null): (number | null)[] | null => (raw === null ? null : raw.trim() === "" ? [] : raw.split(",").map(toInt));
 
 /**
  * Reads a spec from named string fields (a submitted form): `modo` plus `dobles`+`triples`, `columnas`, `reduccion`
- * or `fijos`+`columnas`. Null when the mode is unknown or its fields are missing or out of range.
+ * or `fijos` (comma-separated partidos)+`columnas`. Null when the mode is unknown or its fields are missing or out of range.
  */
 export function specFromFields(get: (name: string) => string | null): PorraSpec | null {
   const modo = get("modo");
@@ -193,7 +216,7 @@ export function specFromFields(get: (name: string) => string | null): PorraSpec 
   if (modo === "multiple") spec = { modo, dobles: toInt(get("dobles")), triples: toInt(get("triples")) };
   else if (modo === "sencilla") spec = { modo, columnas: toInt(get("columnas")) };
   else if (modo === "reducida") spec = { modo, reduccion: get("reduccion") };
-  else if (modo === "intuicion") spec = { modo, fijos: toInt(get("fijos")), columnas: toInt(get("columnas")) };
+  else if (modo === "intuicion") spec = { modo, fijos: toInts(get("fijos")), columnas: toInt(get("columnas")) };
   return isValidSpec(spec) ? spec : null;
 }
 
@@ -203,6 +226,6 @@ export function specFields(spec: PorraSpec): Record<string, string> {
     case "multiple": return { modo: spec.modo, dobles: String(spec.dobles), triples: String(spec.triples) };
     case "sencilla": return { modo: spec.modo, columnas: String(spec.columnas) };
     case "reducida": return { modo: spec.modo, reduccion: spec.reduccion };
-    case "intuicion": return { modo: spec.modo, fijos: String(spec.fijos), columnas: String(spec.columnas) };
+    case "intuicion": return { modo: spec.modo, fijos: spec.fijos.join(","), columnas: String(spec.columnas) };
   }
 }
